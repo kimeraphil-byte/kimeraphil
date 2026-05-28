@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#52821e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FeedProfitPro">
+  <link rel="apple-touch-icon" href="icon-192.png">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FeedProfit Pro — Gestión Feedlot</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<div id="err" style="display:none;position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:1rem;font-family:monospace;font-size:.85rem;z-index:9999;white-space:pre-wrap;max-height:50vh;overflow:auto"></div>
+<script>
+window.onerror=function(msg,src,line,col,err){
+  var d=document.getElementById("err");
+  d.style.display="block";
+  d.textContent="ERROR: "+msg+"\nLine: "+line+" Col: "+col+"\n"+(err?err.stack:"");
+  return true;
+};
+window.addEventListener("unhandledrejection",function(e){
+  var d=document.getElementById("err");
+  d.style.display="block";
+  d.textContent="PROMISE REJECTION: "+(e.reason?e.reason.stack||e.reason:"unknown");
+});
+</script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f1209;--bg2:#161b0e;--bg3:#1e2614;--border:#2e3d1e;
+  --accent:#8fb83a;--accent2:#c8a23a;--danger:#c0392b;--info:#3a8fb8;
+  --text:#e8e0cc;--muted:#8a9070;--card:#192110;
+  --font-h:'Barlow Condensed',sans-serif;--font-b:'Barlow',sans-serif;
+}
+html,body,#root{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);}
+button,input,select{touch-action:manipulation;}
+.app{min-height:100vh;display:flex;flex-direction:column;}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:2px solid var(--accent);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;flex-shrink:0;position:sticky;top:0;z-index:50;}
+.logo{font-family:var(--font-h);font-size:1.7rem;font-weight:900;letter-spacing:.05em;color:var(--accent);text-transform:uppercase;}
+.logo span{color:var(--accent2);}
+.badge{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 12px;font-size:.75rem;color:var(--muted);font-family:var(--font-h);letter-spacing:.1em;text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:1rem;}
+.header-market{display:flex;align-items:center;gap:.4rem;}
+
+/* TOP NAV (desktop) */
+.nav{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;}
+.nav-btn{font-family:var(--font-h);font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:14px 18px;background:none;border:none;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;min-height:44px;}
+.nav-btn:hover{color:var(--text);}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* BOTTOM NAV (mobile) */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:2px solid var(--accent);overflow-x:auto;-webkit-overflow-scrolling:touch;z-index:100;height:60px;align-items:stretch;}
+.bnav-btn{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 16px;background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--font-h);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-top:3px solid transparent;transition:all .2s;min-width:68px;white-space:nowrap;}
+.bnav-btn.active{color:var(--accent);border-top-color:var(--accent);}
+.bnav-icon{font-size:1.15rem;line-height:1;}
+
+/* MAIN */
+.main{flex:1;padding:2rem;max-width:1400px;width:100%;margin:0 auto;}
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:2rem;}
+.kpi{background:var(--card);padding:1.2rem 1.5rem;}
+.kpi-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:var(--font-h);font-weight:600;margin-bottom:.4rem;}
+.kpi-value{font-family:var(--font-h);font-size:2rem;font-weight:900;line-height:1;}
+.kpi-value.pos{color:var(--accent);}.kpi-value.neg{color:var(--danger);}.kpi-value.neu{color:var(--accent2);}
+.kpi-sub{font-size:.72rem;color:var(--muted);margin-top:.3rem;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:0;}
+.card-header{padding:.9rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
+.card-title{font-family:var(--font-h);font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text);}
+.card-body{padding:1.5rem;}
+.tbl{width:100%;border-collapse:collapse;font-size:.88rem;}
+.tbl th{font-family:var(--font-h);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:.6rem 1rem;border-bottom:1px solid var(--border);text-align:left;}
+.tbl td{padding:.65rem 1rem;border-bottom:1px solid rgba(46,61,30,.5);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(143,184,58,.04);}
+.tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.7rem;font-family:var(--font-h);font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.tag-ok{background:rgba(143,184,58,.15);color:var(--accent);}
+.tag-warn{background:rgba(200,162,58,.15);color:var(--accent2);}
+.tag-err{background:rgba(192,57,43,.15);color:#e74c3c;}
+.tag-info{background:rgba(58,143,184,.15);color:var(--info);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:.35rem;}
+.field label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-h);font-weight:600;}
+.field input,.field select{background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:.55rem .9rem;font-size:.9rem;font-family:var(--font-b);outline:none;transition:border .2s;min-height:44px;}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.field select option{background:var(--bg3);}
+.btn{font-family:var(--font-h);font-weight:700;font-size:.9rem;text-transform:uppercase;letter-spacing:.08em;padding:.6rem 1.4rem;border-radius:4px;border:none;cursor:pointer;transition:all .15s;min-height:44px;}
+.btn-primary{background:var(--accent);color:var(--bg);}
+.btn-primary:hover{background:#a6d44a;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:.35rem .85rem;font-size:.78rem;min-height:36px;}
+.bar-chart{display:flex;flex-direction:column;gap:.7rem;}
+.bar-row{display:flex;align-items:center;gap:.8rem;}
+.bar-label{width:110px;color:var(--muted);text-align:right;font-size:.72rem;font-family:var(--font-h);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
+.bar-track{flex:1;background:var(--bg3);border-radius:2px;height:22px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;display:flex;align-items:center;padding-left:8px;font-family:var(--font-h);font-size:.78rem;font-weight:700;transition:width .6s cubic-bezier(.25,.8,.25,1);}
+.bar-fill.income{background:linear-gradient(90deg,var(--accent),#a6d44a);color:var(--bg);}
+.bar-fill.profit{background:linear-gradient(90deg,#3a8fb8,#4ab0e5);color:var(--bg);}
+.bar-fill.loss{background:linear-gradient(90deg,var(--danger),#e74c3c);color:#fff;}
+.sep{height:1px;background:var(--border);margin:1.2rem 0;}
+.section-title{font-family:var(--font-h);font-size:1.5rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.2rem;color:var(--text);}
+.section-title span{color:var(--accent);}
+.empty{text-align:center;padding:2.5rem;color:var(--muted);font-size:.9rem;}
+.mt1{margin-top:1rem;}.mt2{margin-top:1.5rem;}
+.flex-end{display:flex;justify-content:flex-end;}
+.flex-sb{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;}
+.text-accent{color:var(--accent);}.text-accent2{color:var(--accent2);}.text-danger{color:var(--danger);}.text-muted{color:var(--muted);}.fw7{font-weight:700;}
+.alert-card{border-radius:6px;padding:1rem 1.2rem;display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.8rem;}
+.alert-card.err{background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.3);}
+.alert-card.warn{background:rgba(200,162,58,.1);border:1px solid rgba(200,162,58,.25);}
+.alert-card.ok{background:rgba(143,184,58,.1);border:1px solid rgba(143,184,58,.25);}
+.alert-icon{font-size:1.3rem;flex-shrink:0;}
+.alert-title{font-family:var(--font-h);font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.06em;}
+.alert-desc{font-size:.82rem;color:var(--muted);margin-top:.2rem;line-height:1.5;}
+.drop-zone{border:2px dashed var(--border);border-radius:8px;padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3);}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(143,184,58,.05);}
+.sel{background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:.4rem .7rem;font-size:.85rem;font-family:var(--font-b);outline:none;min-height:40px;}
+.gap-stack{display:flex;flex-direction:column;gap:1rem;}
+.gap-stack-lg{display:flex;flex-direction:column;gap:1.5rem;}
+
+/* SIMULATOR */
+.sim-slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:4px;background:var(--bg3);outline:none;cursor:pointer;accent-color:var(--accent);}
+.sim-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--bg);box-shadow:0 0 0 2px var(--accent);}
+.sim-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--bg);}
+.sim-price-display{font-family:var(--font-h);font-size:3.5rem;font-weight:900;color:var(--accent);line-height:1;text-align:center;}
+.sens-cell{text-align:center;padding:.5rem .6rem;font-family:var(--font-h);font-weight:700;font-size:.8rem;border-bottom:1px solid rgba(46,61,30,.3);}
+
+/* BACKEND PANEL */
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1.2rem;}
+.arch-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:1rem 1.2rem;}
+.arch-card h4{font-family:var(--font-h);font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:.5rem;}
+.arch-card p{font-size:.8rem;color:var(--muted);line-height:1.5;}
+.schema-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.8rem;}
+.schema-table th{font-family:var(--font-h);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.4rem .8rem;border-bottom:1px solid var(--border);text-align:left;}
+.schema-table td{padding:.4rem .8rem;border-bottom:1px solid rgba(46,61,30,.4);color:var(--text);}
+.schema-table td:first-child{color:var(--accent2);font-weight:600;font-family:var(--font-h);}
+.schema-table tr:last-child td{border-bottom:none;}
+
+/* MOBILE */
+@media(max-width:768px){
+  .header{padding:0 1rem;height:52px;}
+  .logo{font-size:1.3rem;}
+  .header-export{display:none;}
+  .nav{display:none;}
+  .bottom-nav{display:flex;}
+  .main{padding:1rem;padding-bottom:70px;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  .kpi{padding:.9rem 1rem;}
+  .kpi-value{font-size:1.5rem;}
+  .section-title{font-size:1.2rem;}
+  .card-body{padding:1rem;}
+  .card-header{padding:.75rem 1rem;}
+  .bar-label{width:70px;font-size:.65rem;}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useMemo}=React;
+
+const fmt=(n,d=0)=>(+n||0).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtP=n=>"$"+fmt(n,0);
+const fmtKg=n=>fmt(n,1)+" kg";
+const todayStr=()=>new Date().toISOString().slice(0,10);
+
+/* ── SEED DATA (fechas 2026) ── */
+const seedLotes=[
+  {id:1,nombre:"Lote A1",tropa:"Novillos Angus",cabezas:120,pesoBuyer:250,pesoActual:298,diasEncierroObj:120,diasEncierro:77,fechaEntrada:"2026-03-10",pesoObjetivo:380,precioCompra:4700,costoAlimentoXkgG:2600,precioVenta:4900,sanidad:10000,flete:150,comision:3,estado:"activo"},
+  {id:2,nombre:"Lote B2",tropa:"Heifers Cruza",cabezas:85,pesoBuyer:220,pesoActual:360,diasEncierroObj:100,diasEncierro:100,fechaEntrada:"2026-02-15",pesoObjetivo:360,precioCompra:4500,costoAlimentoXkgG:2600,precioVenta:4700,sanidad:10000,flete:140,comision:3,estado:"vendido"},
+  {id:3,nombre:"Lote C3",tropa:"Novillos Brangus",cabezas:200,pesoBuyer:270,pesoActual:291,diasEncierroObj:90,diasEncierro:16,fechaEntrada:"2026-05-10",pesoObjetivo:400,precioCompra:4800,costoAlimentoXkgG:2600,precioVenta:0,sanidad:10000,flete:145,comision:3,estado:"activo"},
+];
+const seedPesadas=[
+  {id:1,loteId:1,fecha:"2026-03-10",peso:250,cabezas:120,nota:"Entrada"},
+  {id:2,loteId:1,fecha:"2026-03-24",peso:264,cabezas:120,nota:""},
+  {id:3,loteId:1,fecha:"2026-04-07",peso:278,cabezas:120,nota:""},
+  {id:4,loteId:1,fecha:"2026-04-21",peso:291,cabezas:118,nota:"2 bajas"},
+  {id:5,loteId:1,fecha:"2026-05-05",peso:298,cabezas:120,nota:""},
+  {id:6,loteId:3,fecha:"2026-05-10",peso:270,cabezas:200,nota:"Entrada"},
+  {id:7,loteId:3,fecha:"2026-05-25",peso:291,cabezas:200,nota:""},
+];
+const seedDietas=[
+  {id:1,loteId:1,fecha:"2026-05-20",dieta:"Silaje + Maíz + Núcleo",kgMs:8.5,costo:420,nota:""},
+  {id:2,loteId:1,fecha:"2026-05-22",dieta:"Silaje + Maíz + Núcleo",kgMs:8.5,costo:420,nota:""},
+  {id:3,loteId:3,fecha:"2026-05-20",dieta:"Silo maíz + Expeller soja",kgMs:7.2,costo:380,nota:"Inicio encierre"},
+];
+
+function Sparkline({data,color="#8fb83a",h=80}){
+  if(!data||data.length<2)return <div style={{color:"var(--muted)",fontSize:".78rem",padding:"1rem 0"}}>Sin suficientes datos</div>;
+  const W=300,H=h,pad=10;
+  const xs=data.map(d=>d.x),ys=data.map(d=>d.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const rx=x=>maxX===minX?W/2:pad+((x-minX)/(maxX-minX))*(W-pad*2);
+  const ry=y=>maxY===minY?H/2:H-pad-((y-minY)/(maxY-minY))*(H-pad*2);
+  const line=data.map((d,i)=>(i===0?"M":"L")+rx(d.x)+","+ry(d.y)).join(" ");
+  const area=line+" L"+rx(xs[xs.length-1])+","+H+" L"+rx(xs[0])+","+H+" Z";
+  const gid="g"+color.replace(/[^a-z0-9]/gi,"");
+  return(
+    <svg viewBox={"0 0 "+W+" "+H} width="100%" height={H} style={{display:"block"}}>
+      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={color} stopOpacity=".3"/>
+        <stop offset="100%" stopColor={color} stopOpacity="0"/>
+      </linearGradient></defs>
+      <path d={area} fill={"url(#"+gid+")"}/>
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+      {data.map((d,i)=><circle key={i} cx={rx(d.x)} cy={ry(d.y)} r="3.5" fill={color}/>)}
+    </svg>
+  );
+}
+
+/* ── INTERACTIVE WEIGHT CHART ── */
+function InteractiveWeightChart({pesadas,pesoObjetivo,gdpRef}){
+  const[hov,setHov]=useState(null);
+  const sorted=[...pesadas].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if(sorted.length<1)return <div style={{color:"var(--muted)",fontSize:".78rem",padding:"2rem 0",textAlign:"center"}}>Sin pesadas registradas</div>;
+  const W=600,H=210,PL=52,PR=72,PT=20,PB=36;
+  const pw=W-PL-PR,ph=H-PT-PB;
+  const t0=new Date(sorted[0].fecha).getTime();
+  const items=sorted.map(p=>({x:Math.round((new Date(p.fecha)-t0)/86400000),y:p.peso,label:p.fecha,cabezas:p.cabezas,nota:p.nota,cabezasMachos:p.cabezasMachos||0,cabezasHembras:p.cabezasHembras||0,pesoPromedioM:p.pesoPromedioM||0,pesoPromedioH:p.pesoPromedioH||0}));
+  const last=items[items.length-1];
+  const proj=[];
+  if(gdpRef>0&&last.y<pesoObjetivo){let y=last.y,dx=0;while(y<pesoObjetivo&&dx<=210){dx+=14;y=Math.min(last.y+gdpRef*dx,pesoObjetivo);proj.push({x:last.x+dx,y:Math.round(y*10)/10});}}
+  const allX=[...items.map(i=>i.x),...(proj.length?[proj[proj.length-1].x]:[])];
+  const allY=[...items.map(i=>i.y),pesoObjetivo];
+  const maxX=Math.max(...allX,7),minX=0;
+  const rawMin=Math.min(...allY),rawMax=Math.max(...allY),yr=rawMax-rawMin||50;
+  const minY=rawMin-yr*.1,maxY=rawMax+yr*.12;
+  const rx=x=>PL+(x-minX)/(maxX-minX)*pw;
+  const ry=y=>PT+(1-(y-minY)/(maxY-minY))*ph;
+  const hline=items.map((d,i)=>(i===0?"M":"L")+rx(d.x).toFixed(1)+","+ry(d.y).toFixed(1)).join(" ");
+  const pline=proj.length?"M"+rx(last.x).toFixed(1)+","+ry(last.y).toFixed(1)+" "+proj.map(d=>"L"+rx(d.x).toFixed(1)+","+ry(d.y).toFixed(1)).join(" "):null;
+  const objY=ry(pesoObjetivo);
+  const yGrids=Array.from({length:6},(_,i)=>minY+i*(maxY-minY)/5);
+  const xShow=items.length<=5?items:[items[0],...items.slice(1,-1).filter((_,i)=>items.length<=8||(i+1)%Math.ceil((items.length-2)/3)===0),items[items.length-1]];
+  const onMM=e=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    const sx=(e.clientX-r.left)/r.width*W;
+    let near=null,md=Infinity;
+    items.forEach(d=>{const dist=Math.abs(rx(d.x)-sx);if(dist<md&&dist<35){md=dist;near=d;}});
+    setHov(near);
+  };
+  const barColor=gdp=>gdp>=0.9?"var(--accent)":gdp>=0.7?"var(--accent2)":"var(--danger)";
+  return(
+    <div style={{position:"relative",userSelect:"none"}}>
+      <svg viewBox={"0 0 "+W+" "+H} width="100%" style={{display:"block",overflow:"visible"}} onMouseMove={onMM} onMouseLeave={()=>setHov(null)}>
+        {yGrids.map(y=><line key={y} x1={PL} y1={ry(y).toFixed(1)} x2={W-PR} y2={ry(y).toFixed(1)} stroke="rgba(46,61,30,.45)" strokeWidth=".8"/>)}
+        <line x1={PL} y1={objY.toFixed(1)} x2={W-PR} y2={objY.toFixed(1)} stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,5" opacity=".65"/>
+        <text x={W-PR+5} y={objY+4} fill="var(--accent)" fontSize="10" fontFamily="var(--font-h)" fontWeight="700">Obj.</text>
+        <text x={W-PR+5} y={objY+15} fill="var(--accent)" fontSize="10" fontFamily="var(--font-h)">{pesoObjetivo}kg</text>
+        {pline&&proj.length&&<path d={pline+" L"+rx(proj[proj.length-1].x)+","+(H-PB)+" L"+rx(last.x)+","+(H-PB)+" Z"} fill="rgba(200,162,58,.07)"/>}
+        {pline&&<path d={pline} fill="none" stroke="var(--accent2)" strokeWidth="2" strokeDasharray="7,4" opacity=".9"/>}
+        {pline&&proj.map((d,i)=><circle key={i} cx={rx(d.x).toFixed(1)} cy={ry(d.y).toFixed(1)} r="3" fill="var(--accent2)" opacity=".5"/>)}
+        <path d={hline+" L"+rx(last.x)+","+(H-PB)+" L"+rx(items[0].x)+","+(H-PB)+" Z"} fill="rgba(143,184,58,.09)"/>
+        <path d={hline} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+        {items.map((d,i)=>{const isH=hov===d;return(<g key={i}>{isH&&<circle cx={rx(d.x).toFixed(1)} cy={ry(d.y).toFixed(1)} r="11" fill="rgba(143,184,58,.15)"/>}<circle cx={rx(d.x).toFixed(1)} cy={ry(d.y).toFixed(1)} r={isH?6:4.5} fill={isH?"var(--accent)":"var(--card)"} stroke="var(--accent)" strokeWidth="2"/></g>);})}
+        {yGrids.map(y=><text key={y} x={PL-5} y={ry(y)+4} fill="var(--muted)" fontSize="10" textAnchor="end" fontFamily="var(--font-h)">{Math.round(y)}</text>)}
+        {xShow.map((d,i)=><text key={i} x={rx(d.x)} y={H-PB+16} fill="var(--muted)" fontSize="9" textAnchor="middle" fontFamily="var(--font-h)">{d.label.slice(5)}</text>)}
+        <line x1={PL} y1={PT} x2={PL} y2={H-PB} stroke="rgba(46,61,30,.8)" strokeWidth="1"/>
+        <line x1={PL} y1={H-PB} x2={W-PR} y2={H-PB} stroke="rgba(46,61,30,.8)" strokeWidth="1"/>
+        <line x1={PL+8} y1={PT+9} x2={PL+26} y2={PT+9} stroke="var(--accent)" strokeWidth="2.5"/>
+        <text x={PL+29} y={PT+13} fill="var(--muted)" fontSize="9" fontFamily="var(--font-h)">Peso real</text>
+        {pline&&<><line x1={PL+88} y1={PT+9} x2={PL+106} y2={PT+9} stroke="var(--accent2)" strokeWidth="2" strokeDasharray="5,3"/><text x={PL+109} y={PT+13} fill="var(--muted)" fontSize="9" fontFamily="var(--font-h)">Proyeccion al obj.</text></>}
+      </svg>
+      {hov&&(()=>{
+        const tx=rx(hov.x)/W,ty=ry(hov.y)/H;
+        const tieneSexo=hov.cabezasMachos>0||hov.cabezasHembras>0;
+        return(<div style={{position:"absolute",left:(tx*100)+"%",top:(ty*100)+"%",transform:tx>0.65?"translate(-108%,-50%)":"translate(8%,-50%)",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:6,padding:".6rem .9rem",pointerEvents:"none",zIndex:20,boxShadow:"0 4px 20px rgba(0,0,0,.45)",minWidth:140}}>
+          <div style={{fontFamily:"var(--font-h)",fontWeight:900,color:"var(--accent)",fontSize:"1.15rem",lineHeight:1}}>{hov.y} kg</div>
+          <div style={{fontSize:".72rem",color:"var(--muted)",marginTop:".2rem"}}>{hov.label}</div>
+          <div style={{fontSize:".72rem",color:"var(--text)",marginTop:".15rem"}}>{hov.cabezas} cabezas</div>
+          {tieneSexo&&<div style={{fontSize:".72rem",marginTop:".15rem"}}><span style={{color:"var(--info)"}}>♂ {hov.cabezasMachos}M{hov.pesoPromedioM>0?" ("+hov.pesoPromedioM+"kg)":""}</span>{" · "}<span style={{color:"var(--accent2)"}}>♀ {hov.cabezasHembras}H{hov.pesoPromedioH>0?" ("+hov.pesoPromedioH+"kg)":""}</span></div>}
+          {hov.nota&&hov.nota!=="—"&&<div style={{fontSize:".7rem",color:"var(--accent2)",marginTop:".15rem",borderTop:"1px solid var(--border)",paddingTop:".15rem"}}>{hov.nota}</div>}
+        </div>);
+      })()}
+    </div>
+  );
+}
+
+/* ── GDP BAR CHART ── */
+function GDPBarChart({pesadas}){
+  const[hov,setHov]=useState(null);
+  const sorted=[...pesadas].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if(sorted.length<2)return <div style={{color:"var(--muted)",fontSize:".78rem",padding:"2rem 0",textAlign:"center"}}>Se necesitan al menos 2 pesadas para calcular GDP</div>;
+  const periods=sorted.slice(1).map((p,i)=>{
+    const prev=sorted[i];
+    const dias=Math.round((new Date(p.fecha)-new Date(prev.fecha))/86400000);
+    const gdp=dias>0?Math.round((p.peso-prev.peso)/dias*1000)/1000:0;
+    return{label:prev.fecha.slice(5)+"→"+p.fecha.slice(5),desde:prev.fecha,hasta:p.fecha,dias,gdp,deltaKg:Math.round((p.peso-prev.peso)*10)/10};
+  });
+  const W=600,H=170,PL=48,PR=18,PT=18,PB=32;
+  const pw=W-PL-PR,ph=H-PT-PB;
+  const n=periods.length;
+  const gap=pw/n;
+  const bW=Math.max(10,Math.min(56,gap*.65));
+  const maxG=Math.max(...periods.map(p=>Math.abs(p.gdp)),1.2);
+  const ry=g=>PT+(1-Math.max(0,g)/maxG)*ph;
+  const cx=i=>PL+i*gap+gap/2;
+  const bCol=g=>g>=0.9?"var(--accent)":g>=0.7?"var(--accent2)":"var(--danger)";
+  const r09=PT+(1-.9/maxG)*ph,r07=PT+(1-.7/maxG)*ph;
+  return(
+    <div style={{position:"relative",userSelect:"none"}}>
+      <svg viewBox={"0 0 "+W+" "+H} width="100%" style={{display:"block",overflow:"visible"}} onMouseLeave={()=>setHov(null)}>
+        {r09>PT&&r09<H-PB&&<><line x1={PL} y1={r09.toFixed(1)} x2={W-PR} y2={r09.toFixed(1)} stroke="rgba(143,184,58,.4)" strokeWidth="1" strokeDasharray="4,3"/><text x={PL-3} y={r09+4} fill="var(--accent)" fontSize="9" textAnchor="end" fontFamily="var(--font-h)">.9</text></>}
+        {r07>PT&&r07<H-PB&&<><line x1={PL} y1={r07.toFixed(1)} x2={W-PR} y2={r07.toFixed(1)} stroke="rgba(200,162,58,.4)" strokeWidth="1" strokeDasharray="4,3"/><text x={PL-3} y={r07+4} fill="var(--accent2)" fontSize="9" textAnchor="end" fontFamily="var(--font-h)">.7</text></>}
+        {periods.map((p,i)=>{
+          const bh=Math.max(3,(Math.max(0,p.gdp)/maxG)*ph);
+          const by=ry(p.gdp);
+          const isH=hov===p;
+          return(<g key={i} style={{cursor:"pointer"}} onMouseEnter={()=>setHov(p)} onMouseLeave={()=>setHov(null)}>
+            <rect x={(cx(i)-bW/2).toFixed(1)} y={by.toFixed(1)} width={bW.toFixed(1)} height={bh.toFixed(1)} fill={bCol(p.gdp)} rx="3" opacity={isH?1:.72}/>
+            {isH&&<rect x={(cx(i)-bW/2-2).toFixed(1)} y={(by-2).toFixed(1)} width={(bW+4).toFixed(1)} height={(bh+4).toFixed(1)} fill="none" stroke={bCol(p.gdp)} strokeWidth="1.5" rx="4"/>}
+            <text x={cx(i).toFixed(1)} y={(by-5).toFixed(1)} fill={bCol(p.gdp)} fontSize="10" textAnchor="middle" fontFamily="var(--font-h)" fontWeight="700">{p.gdp}</text>
+          </g>);})}
+        {periods.map((p,i)=><text key={i} x={cx(i).toFixed(1)} y={H-PB+14} fill="var(--muted)" fontSize="8.5" textAnchor="middle" fontFamily="var(--font-h)">{p.hasta.slice(5)}</text>)}
+        <line x1={PL} y1={PT} x2={PL} y2={H-PB} stroke="rgba(46,61,30,.8)" strokeWidth="1"/>
+        <line x1={PL} y1={H-PB} x2={W-PR} y2={H-PB} stroke="rgba(46,61,30,.8)" strokeWidth="1"/>
+        <text x={PL+6} y={PT+11} fill="var(--muted)" fontSize="9" fontFamily="var(--font-h)">kg/día</text>
+      </svg>
+      {hov&&(()=>{
+        const i=periods.indexOf(hov);
+        const tx=cx(i)/W,ty=ry(Math.max(0,hov.gdp))/H;
+        return(<div style={{position:"absolute",left:(tx*100)+"%",top:(ty*100)+"%",transform:tx>0.6?"translate(-108%,-50%)":"translate(8%,-50%)",background:"var(--bg2)",border:"1px solid "+bCol(hov.gdp),borderRadius:6,padding:".55rem .85rem",pointerEvents:"none",zIndex:20,boxShadow:"0 4px 20px rgba(0,0,0,.45)",minWidth:145}}>
+          <div style={{fontFamily:"var(--font-h)",fontWeight:900,color:bCol(hov.gdp),fontSize:"1.15rem",lineHeight:1}}>{hov.gdp} kg/día</div>
+          <div style={{fontSize:".72rem",color:"var(--muted)",marginTop:".2rem"}}>{hov.desde} → {hov.hasta}</div>
+          <div style={{fontSize:".72rem",color:"var(--text)",marginTop:".15rem"}}>{hov.dias} días · Δ {hov.deltaKg>0?"+":""}{hov.deltaKg} kg</div>
+        </div>);
+      })()}
+    </div>
+  );
+}
+
+function App(){
+  const[tab,setTab]=useState("dashboard");
+  const[lotes,setLotes]=useState(()=>(JSON.parse(localStorage.getItem("fp_lotes")||"null")||seedLotes).map((l,i)=>({...l,nombre:l.nombre||"Lote "+(i+1)})));
+  const[pesadas,setPesadas]=useState(()=>JSON.parse(localStorage.getItem("fp_pesadas")||"null")||seedPesadas);
+  const[dietas,setDietas]=useState(()=>JSON.parse(localStorage.getItem("fp_dietas")||"null")||seedDietas);
+  const[precioMercado,setPrecioMercado]=useState(()=>+localStorage.getItem("fp_precio")||1200);
+  const[showLoteForm,setShowLoteForm]=useState(false);
+  const[expandedLote,setExpandedLote]=useState(null);
+  const[editingPeso,setEditingPeso]=useState(null);
+  const[tempPeso,setTempPeso]=useState("");
+  const[expandedPeso,setExpandedPeso]=useState(null);
+  const[editLoteId,setEditLoteId]=useState(null);
+  const[loteForm,setLoteForm]=useState({});
+  const[selLote,setSelLote]=useState(()=>lotes[0]?.id||1);
+  const[showPesadaForm,setShowPesadaForm]=useState(false);
+  const[pesadaForm,setPesadaForm]=useState({loteId:lotes[0]?.id||1,fecha:todayStr(),peso:0,cabezas:0,nota:""});
+  const[dietForm,setDietForm]=useState({loteId:lotes[0]?.id||1,fecha:todayStr(),dieta:"",kgMs:8,costo:400,nota:""});
+  const[ttFile,setTtFile]=useState(null);
+  const[ttRows,setTtRows]=useState([]);
+  const[ttHeaders,setTtHeaders]=useState([]);
+  const[ttColW,setTtColW]=useState("");
+  const[ttColL,setTtColL]=useState("");
+  const[ttColS,setTtColS]=useState("");
+  const[ttPrev,setTtPrev]=useState([]);
+  const[ttDrag,setTtDrag]=useState(false);
+  const[ttDone,setTtDone]=useState(null);
+  const[ttDate,setTtDate]=useState(todayStr);
+  const[showTropa,setShowTropa]=useState(null);
+  const[tropaFilter,setTropaFilter]=useState("todos");
+  const[tropaLote,setTropaLote]=useState("todos");
+  const[tropaSex,setTropaSex]=useState("todos");
+  const[tropaSearch,setTropaSearch]=useState("");
+  const[simPrecio,setSimPrecio]=useState(()=>+localStorage.getItem("fp_precio")||1200);
+  const[ventas,setVentas]=useState(()=>JSON.parse(localStorage.getItem("fp_ventas")||"[]"));
+  const[showVentaForm,setShowVentaForm]=useState(false);
+  const[ventaForm,setVentaForm]=useState({fecha:todayStr(),comprador:"",nota:"",partidas:[{loteId:lotes[0]?.id||1,cabezas:0,pesoVenta:0,precio:+localStorage.getItem("fp_precio")||1200,animales:null}]});
+  const[showTTFor,setShowTTFor]=useState(null);
+  const[expandVentaId,setExpandVentaId]=useState(null);
+  const[eidImport,setEidImport]=useState(null);
+
+  useEffect(()=>{localStorage.setItem("fp_lotes",JSON.stringify(lotes));},[lotes]);
+  useEffect(()=>{localStorage.setItem("fp_pesadas",JSON.stringify(pesadas));},[pesadas]);
+  useEffect(()=>{localStorage.setItem("fp_dietas",JSON.stringify(dietas));},[dietas]);
+  useEffect(()=>{localStorage.setItem("fp_precio",precioMercado);},[precioMercado]);
+  useEffect(()=>{localStorage.setItem("fp_ventas",JSON.stringify(ventas));},[ventas]);
+
+  const getDiasEncierro=l=>{
+    if(!l.fechaEntrada) return l.diasEncierro||0;
+    const dias=Math.floor((Date.now()-new Date(l.fechaEntrada))/86400000);
+    return Math.max(0,dias);
+  };
+
+  const getGDPReal=loteId=>{
+    const ps=pesadas.filter(p=>p.loteId===loteId).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    if(ps.length<2)return 0;
+    const first=ps[0],last=ps[ps.length-1];
+    const dias=Math.round((new Date(last.fecha)-new Date(first.fecha))/86400000);
+    return dias>0?(last.peso-first.peso)/dias:0;
+  };
+
+  const calcLote=l=>{
+    const gdp=getGDPReal(l.id);
+    const diasEncierro=getDiasEncierro(l);
+    const kgG=l.pesoActual-l.pesoBuyer;
+    const compra=l.precioCompra*l.pesoBuyer;
+    const comision=compra*(l.comision||0)/100;
+    const fleteTotal=(l.flete||0)*l.pesoBuyer;
+    const sanidad=l.sanidad||0;
+    const kgGanActual=Math.max(0,kgG);
+    const costoAlimActual=(l.costoAlimentoXkgG||0)*kgGanActual;
+    const costo=compra+comision+fleteTotal+sanidad+costoAlimActual;
+    const gdpRef=gdp>0?gdp:(diasEncierro>0?kgG/diasEncierro:0);
+    const kgGanObj=l.pesoObjetivo-l.pesoBuyer;
+    const costoAlimObj=(l.costoAlimentoXkgG||0)*Math.max(0,kgGanObj);
+    const costoObj=compra+comision+fleteTotal+sanidad+costoAlimObj;
+    const precioRef=l.precioVenta>0?l.precioVenta:precioMercado;
+    const ing=precioRef*l.pesoActual;
+    const ingObj=precioRef*l.pesoObjetivo;
+    const mg=ing-costo;
+    const mgObj=ingObj-costoObj;
+    const roi=costo>0?(mg/costo)*100:0;
+    const roiObj=costoObj>0?(mgObj/costoObj)*100:0;
+    const diasR=gdpRef>0?(l.pesoObjetivo-l.pesoActual)/gdpRef:0;
+    const cpkg=kgG>0?costoAlimActual/kgG:0;
+    return{compra,comision,fleteTotal,sanidad,costoAlimActual,costoAlimObj,costo,costoObj,kgG,gdp:gdpRef,ing,ingObj,mg,mgObj,roi,roiObj,diasR,cpkg,kgGanObj,diasEncierro};
+  };
+
+  const alertas=[];
+  lotes.filter(l=>l.estado==="activo").forEach(l=>{
+    const c=calcLote(l);
+    if(c.gdp>0&&c.gdp<0.7) alertas.push({tipo:"err",lote:l.nombre,msg:"GDP crítico: "+fmt(c.gdp,3)+" kg/día. Revisar dieta y sanidad urgente."});
+    else if(c.gdp>0&&c.gdp<0.9) alertas.push({tipo:"warn",lote:l.nombre,msg:"GDP bajo: "+fmt(c.gdp,3)+" kg/día. Considerar ajuste de dieta."});
+    if(c.diasR>0&&c.diasR<=7) alertas.push({tipo:"ok",lote:l.nombre,msg:"Listo para vender en ~"+Math.round(c.diasR)+" días. Peso: "+l.pesoActual+" kg / Objetivo: "+l.pesoObjetivo+" kg."});
+    if(c.mg<0) alertas.push({tipo:"err",lote:l.nombre,msg:"Margen negativo hoy: "+fmtP(c.mg)+"/cab. Margen objetivo: "+fmtP(c.mgObj)+"/cab."});
+    const ps=pesadas.filter(p=>p.loteId===l.id);
+    if(ps.length>0){
+      const ultima=ps.sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+      const dias=Math.round((Date.now()-new Date(ultima.fecha))/86400000);
+      if(dias>21) alertas.push({tipo:"warn",lote:l.nombre,msg:"Sin pesada hace "+dias+" días. Recomendado cada 14-21 días."});
+    } else alertas.push({tipo:"warn",lote:l.nombre,msg:"Sin historial de pesadas registrado."});
+  });
+
+  const G=lotes.reduce((a,l)=>{
+    const c=calcLote(l);
+    a.cab+=l.cabezas;a.ing+=c.ing*l.cabezas;a.cost+=c.costo*l.cabezas;a.mg+=c.mg*l.cabezas;a.kg+=c.kgG*l.cabezas;return a;
+  },{cab:0,ing:0,cost:0,mg:0,kg:0});
+  G.roi=G.cost>0?(G.mg/G.cost)*100:0;
+
+  const parseCSV=text=>{
+    const lines=text.trim().split(/\r?\n/).filter(Boolean);
+    if(lines.length<2)return{headers:[],rows:[]};
+    const sep=lines[0].includes(";")?";":","
+    const headers=lines[0].split(sep).map(h=>h.replace(/^"|"$/g,"").trim());
+    const rows=lines.slice(1).map(line=>{
+      const vals=line.split(sep).map(v=>v.replace(/^"|"$/g,"").trim());
+      return Object.fromEntries(headers.map((h,i)=>[h,vals[i]??""]));
+    });
+    return{headers,rows};
+  };
+
+  const handleTTFile=file=>{
+    if(!file)return;
+    setTtFile(file.name);setTtDone(null);
+    const r=new FileReader();
+    r.onload=e=>{
+      const{headers,rows}=parseCSV(e.target.result);
+      setTtHeaders(headers);setTtRows(rows);
+      const find=c=>headers.find(h=>c.some(x=>h.toLowerCase().includes(x)))??"";
+      setTtColW(find(["weight","peso","liveweight","kg"]));
+      setTtColL(find(["lote","group","grupo","mob","session","draft"]));
+      setTtColS(find(["sex","sexo","gender","genero","categoria","category","tipo"]));
+    };
+    r.readAsText(file);
+  };
+
+  // Normaliza valores de sexo de Tru-Test a M / H / null
+  const normSex=v=>{
+    const s=(v||"").toLowerCase().trim();
+    if(!s)return null;
+    if(["m","male","macho","novillo","toro","novillito","capón","capon","1"].some(x=>s===x||s.startsWith(x)))return"M";
+    if(["f","female","hembra","vaquillona","ternera","vaca","2"].some(x=>s===x||s.startsWith(x)))return"H";
+    return s.slice(0,3).toUpperCase();
+  };
+
+  useEffect(()=>{
+    if(!ttRows.length||!ttColW){setTtPrev([]);return;}
+    // auto-detect EID column from headers
+    const allHdrs=Object.keys(ttRows[0]||{});
+    const eidHdr=allHdrs.find(h=>{const hl=h.toLowerCase();return['eid','rfid','electronico','electronic','transponder'].some(n=>hl.includes(n));});
+    const g={};
+    ttRows.forEach(row=>{
+      const k=ttColL?(row[ttColL]||"Sin grupo"):"Todos";
+      if(!g[k])g[k]=[];
+      const w=parseFloat(row[ttColW]);
+      if(!isNaN(w)&&w>0){
+        const sex=ttColS?normSex(row[ttColS]):null;
+        const rawEid=eidHdr?(row[eidHdr]||''):'';
+        const eid=rawEid.length>3?rawEid:null;
+        const vid=ttColL?row[ttColL]||null:null;
+        g[k].push({w,sex,eid,vid});
+      }
+    });
+    setTtPrev(Object.entries(g).map(([grp,items])=>{
+      const ws=items.map(i=>i.w);
+      const avg=Math.round((ws.reduce((a,b)=>a+b,0)/ws.length)*10)/10;
+      const mItems=items.filter(i=>i.sex==="M");
+      const hItems=items.filter(i=>i.sex==="H");
+      const avgM=mItems.length?Math.round((mItems.map(i=>i.w).reduce((a,b)=>a+b,0)/mItems.length)*10)/10:0;
+      const avgH=hItems.length?Math.round((hItems.map(i=>i.w).reduce((a,b)=>a+b,0)/hItems.length)*10)/10:0;
+      const cats=[...new Set(items.map(i=>i.sex).filter(Boolean))];
+      const autoMatched=lotes.find(l=>l.nombre.toLowerCase().includes(grp.toLowerCase())||grp.toLowerCase().includes(l.nombre.toLowerCase()))??null;
+      const animales=items.map(i=>({eid:i.eid,vid:i.vid,peso:i.w,sexo:i.sex,eidManual:''}));
+      return{grp,n:ws.length,avg,max:Math.max(...ws),min:Math.min(...ws),machos:mItems.length,hembras:hItems.length,avgM,avgH,cats,matched:autoMatched,manualLoteId:autoMatched?.id||"",animales};
+    }));
+  },[ttRows,ttColW,ttColL,ttColS]);
+
+  /* Merge individual animals: preserva pesoEntrada para animales ya registrados */
+  const mergeAnimales=(existing,newOnes,dateStr)=>{
+    const base=[...(existing||[])];
+    (newOnes||[]).forEach(a=>{
+      const idx=base.findIndex(e=>e.eid&&a.eid&&e.eid.trim()===a.eid.trim());
+      if(idx>=0){
+        // Ya existe: mantener pesoEntrada original, actualizar sexo/vid
+        base[idx]={...base[idx],sexo:a.sexo||base[idx].sexo,vid:a.vid||base[idx].vid};
+      } else {
+        // Nuevo animal: pesoEntrada = peso actual en este import
+        base.push({...a,pesoEntrada:a.peso,fechaEntrada:dateStr});
+      }
+    });
+    return base;
+  };
+  const applyTT=()=>{
+    const log=[];
+    const fecha=ttDate||todayStr();
+    const nl=lotes.map(l=>{
+      const m=ttPrev.find(p=>+p.manualLoteId===l.id);
+      if(!m)return l;
+      log.push({lote:l.nombre,antes:l.pesoActual,despues:m.avg,n:m.n,machos:m.machos,hembras:m.hembras});
+      const animalesMerged=mergeAnimales(l.animales,m.animales,fecha);
+      setPesadas(prev=>[...prev,{id:Date.now()+l.id,loteId:l.id,fecha,peso:m.avg,cabezas:m.n,cabezasMachos:m.machos||0,cabezasHembras:m.hembras||0,pesoPromedioM:m.avgM||0,pesoPromedioH:m.avgH||0,nota:"Import Tru-Test",animales:animalesMerged}]);
+      return{...l,pesoActual:m.avg,animales:animalesMerged};
+    });
+    setLotes(nl);setTtDone({updated:log.length,log});
+  };
+
+  const exportBackup=()=>{
+    const data={
+      fp_lotes:lotes,
+      fp_pesadas:pesadas,
+      fp_dietas:dietas,
+      fp_ventas:ventas,
+      fp_precio:precioMercado,
+      _version:1,
+      _fecha:new Date().toISOString().slice(0,10)
+    };
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download="FeedProfitPro_backup_"+data._fecha+".json";a.click();
+  };
+  const importBackup=file=>{
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const d=JSON.parse(e.target.result);
+        if(!d.fp_lotes&&!d.fp_pesadas){alert("Archivo inválido.");return;}
+        if(!window.confirm("Esto reemplaza TODOS los datos actuales con el backup. ¿Continuar?"))return;
+        if(d.fp_lotes)setLotes(d.fp_lotes);
+        if(d.fp_pesadas)setPesadas(d.fp_pesadas);
+        if(d.fp_dietas)setDietas(d.fp_dietas);
+        if(d.fp_ventas)setVentas(d.fp_ventas);
+        if(d.fp_precio)setPrecioMercado(d.fp_precio);
+        alert("✓ Backup restaurado correctamente.");
+      }catch(err){alert("Error al leer el archivo: "+err.message);}
+    };
+    reader.readAsText(file);
+  };
+  const exportCSV=()=>{
+    const rows=[["Lote","Tropa","Cabezas","Días","GDP","Costo/cab","Ingreso/cab","Margen/cab","ROI","Estado"]];
+    lotes.forEach(l=>{const c=calcLote(l);rows.push([l.nombre,l.tropa,l.cabezas,c.diasEncierro,fmt(c.gdp,3),fmt(c.costo,0),fmt(c.ing,0),fmt(c.mg,0),fmt(c.roi,1),l.estado]);});
+    dl("data:text/csv;charset=utf-8,﻿"+encodeURIComponent(rows.map(r=>r.join(";")).join("\n")),"feedlot_flota_"+todayStr()+".csv");
+  };
+  const exportLote=l=>{
+    const c=calcLote(l);
+    const ps=pesadas.filter(p=>p.loteId===l.id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const ds=dietas.filter(d=>d.loteId===l.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    const rows=[
+      ["REPORTE LOTE",l.nombre,"",""],
+      ["Tropa",l.tropa,"Estado",l.estado],
+      ["Cabezas",l.cabezas,"Días encierre",getDiasEncierro(l)],
+      ["Peso buyer (kg)",l.pesoBuyer,"Peso actual (kg)",l.pesoActual],
+      ["Peso objetivo (kg)",l.pesoObjetivo,"GDP (kg/d)",fmt(c.gdp,3)],
+      ["Días restantes",fmt(c.diasR,0),"",""],
+      ["","","",""],
+      ["FINANCIERO","","",""],
+      ["Costo/cab ($)",fmt(c.costo,0),"Ingreso/cab ($)",fmt(c.ing,0)],
+      ["Margen/cab ($)",fmt(c.mg,0),"ROI (%)",fmt(c.roi,1)],
+      ["Costo total ($)",fmt(c.costo*l.cabezas,0),"Ingreso total ($)",fmt(c.ing*l.cabezas,0)],
+      ["","","",""],
+      ["HISTORIAL DE PESADAS","","",""],
+      ["Fecha","Peso prom (kg)","Cabezas","Nota"],
+      ...ps.map(p=>[p.fecha,p.peso,p.cabezas,p.nota||""]),
+      ["","","",""],
+      ["DIETAS","","",""],
+      ["Fecha","Descripcion","kg MS/cab","Costo/cab ($)"],
+      ...ds.map(d=>[d.fecha,d.dieta,d.kgMs,fmt(d.costo,0)]),
+    ];
+    dl("data:text/csv;charset=utf-8,﻿"+encodeURIComponent(rows.map(r=>r.join(";")).join("\n")),"reporte_"+l.nombre.replace(/\s/g,"_")+"_"+todayStr()+".csv");
+  };
+  const dl=(href,name)=>{const a=document.createElement("a");a.href=href;a.download=name;a.click();};
+
+  const getSparkPeso=id=>{
+    const ps=pesadas.filter(p=>p.loteId===id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    if(ps.length<2)return[];
+    const t0=new Date(ps[0].fecha).getTime();
+    return ps.map(p=>({x:Math.round((new Date(p.fecha)-t0)/86400000),y:p.peso}));
+  };
+  const getSparkGDP=id=>{
+    const ps=pesadas.filter(p=>p.loteId===id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    if(ps.length<2)return[];
+    return ps.slice(1).map((p,i)=>{
+      const prev=ps[i];const d=Math.round((new Date(p.fecha)-new Date(prev.fecha))/86400000);
+      return{x:i+1,y:d>0?Math.round((p.peso-prev.peso)/d*1000)/1000:0};
+    });
+  };
+
+  /* ── SAVE LOTE (bug fix: tropa, pesoActual, default pesoActual=pesoBuyer) ── */
+  const saveLote=()=>{
+    const f={...loteForm,id:editLoteId??Date.now(),nombre:(loteForm.nombre||"").trim()||"Lote sin nombre",fechaEntrada:loteForm.fechaEntrada||todayStr()};
+    ["cabezas","pesoBuyer","pesoActual","diasEncierro","diasEncierroObj","pesoObjetivo","precioCompra","precioVenta","costoAlimentoXkgG","sanidad","flete","comision"].forEach(k=>f[k]=+f[k]||0);
+    if(!f.pesoActual) f.pesoActual=f.pesoBuyer;  // BUG FIX: default pesoActual
+    setLotes(p=>editLoteId?p.map(l=>l.id===editLoteId?f:l):[...p,f]);
+    setShowLoteForm(false);
+  };
+
+  const barMax=Math.max(...lotes.map(l=>calcLote(l).ing*l.cabezas),1);
+  const hasCrit=alertas.some(a=>a.tipo==="err");
+  const alertLabel="Alertas"+(alertas.length?" ("+alertas.length+")":"");
+
+  const navItems=[
+    ["dashboard","📊","Dashboard"],
+    ["lotes","🐄","Lotes"],
+    ["historial","📈","GDP"],
+    ["dietas","🌾","Dietas"],
+    ["alertas","🔔","Alertas"+(alertas.length?" "+alertas.length:"")],
+    ["ventas","🏷️","Ventas"+(ventas.length?" "+ventas.length:"")],
+    ["tropa","📋","Tropa"],
+    ["simulador","📉","Simulador"],
+    ["trutest","📤","Tru-Test"],
+    ["config","⚙️","Config"],
+  ];
+
+  return(
+    <div className="app">
+      {/* HEADER */}
+      <div className="header">
+        <div className="logo">Feed<span>Profit</span> <span style={{color:"var(--muted)",fontSize:"1rem",fontWeight:400}}>Pro</span></div>
+        <div className="header-right">
+          <div className="header-market">
+            <span style={{fontSize:".7rem",color:"var(--muted)",fontFamily:"var(--font-h)",textTransform:"uppercase",letterSpacing:".08em"}}>Mercado</span>
+            <input type="number" value={precioMercado} onChange={e=>setPrecioMercado(+e.target.value)}
+              style={{width:85,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,color:"var(--accent2)",padding:"4px 8px",fontSize:".9rem",fontFamily:"var(--font-h)",fontWeight:700,outline:"none",minHeight:36}}/>
+            <span style={{fontSize:".68rem",color:"var(--muted)"}}>$/kg</span>
+          </div>
+          <div className="header-export" style={{display:"flex",alignItems:"center",gap:".6rem"}}>
+            <button className="btn btn-ghost btn-sm" onClick={exportCSV}>⬇ CSV Flota</button>
+            <div className="badge">v2.1</div>
+          </div>
+        </div>
+      </div>
+
+      {/* TOP NAV */}
+      <nav className="nav">
+        {navItems.map(([k,,v])=>(
+          <button key={k} className={"nav-btn"+(tab===k?" active":"")}
+            style={k==="alertas"&&hasCrit?{color:"#e74c3c"}:{}}
+            onClick={()=>setTab(k)}>
+            {k==="alertas"?alertLabel:v}
+          </button>
+        ))}
+      </nav>
+
+      <div className="main">
+
+        {/* DASHBOARD */}
+        {tab==="dashboard"&&<>
+          <div className="section-title">Resumen <span>Operativo</span></div>
+          <div className="kpi-strip">
+            {[["Cabezas totales","neu",fmt(G.cab),lotes.length+" lotes"],["Ingreso proyectado","neu",fmtP(G.ing),"total flota"],["Costo total","neu",fmtP(G.cost),"compra + encierre"],["Margen bruto",G.mg>=0?"pos":"neg",fmtP(G.mg),"ingreso − costo"],["ROI flota",G.roi>=0?"pos":"neg",fmt(G.roi,1)+"%","retorno inversión"],["kg producidos","pos",fmt(G.kg)+" kg","ganancia total"],["Alertas activas",hasCrit?"neg":"neu",""+alertas.length,alertas.filter(a=>a.tipo==="err").length+" críticas"]].map(([l,c,v,s])=>(
+              <div className="kpi" key={l}><div className="kpi-label">{l}</div><div className={"kpi-value "+c}>{v}</div><div className="kpi-sub">{s}</div></div>
+            ))}
+          </div>
+          {alertas.filter(a=>a.tipo==="err").map((a,i)=>(
+            <div key={i} className="alert-card err"><div className="alert-icon">🚨</div><div><div className="alert-title" style={{color:"#e74c3c"}}>{a.lote}</div><div className="alert-desc">{a.msg}</div></div></div>
+          ))}
+          <div className="grid-2">
+            <div className="card"><div className="card-header"><span className="card-title">Ingresos por lote</span></div><div className="card-body"><div className="bar-chart">{lotes.map(l=>{const c=calcLote(l);const pct=Math.round(c.ing*l.cabezas/barMax*100);return(<div className="bar-row" key={l.id}><div className="bar-label">{l.nombre}</div><div className="bar-track"><div className="bar-fill income" style={{width:pct+"%"}}>{fmtP(c.ing*l.cabezas)}</div></div></div>);})}</div></div></div>
+            <div className="card"><div className="card-header"><span className="card-title">Margen por lote ($/cab)</span></div><div className="card-body"><div className="bar-chart">{lotes.map(l=>{const c=calcLote(l);const maxM=Math.max(...lotes.map(x=>Math.abs(calcLote(x).mg)),1);const pct=Math.round(Math.abs(c.mg)/maxM*100);return(<div className="bar-row" key={l.id}><div className="bar-label">{l.nombre}</div><div className="bar-track"><div className={"bar-fill "+(c.mg>=0?"profit":"loss")} style={{width:pct+"%"}}>{fmtP(c.mg)}/cab</div></div></div>);})}</div></div></div>
+          </div>
+          <div className="card"><div className="card-header"><span className="card-title">Estado de flota</span><button className="btn btn-ghost btn-sm" onClick={exportCSV}>⬇ CSV</button></div>
+            <div style={{overflowX:"auto"}}><table className="tbl"><thead><tr><th>Lote</th><th>Tropa</th><th>Cab</th><th>Días</th><th>GDP</th><th>Costo/cab</th><th>Ing. hoy</th><th>Ing. obj.</th><th>Margen hoy</th><th>Margen obj.</th><th>ROI hoy</th><th>ROI obj.</th><th>Estado</th><th></th></tr></thead>
+              <tbody>{lotes.map(l=>{const c=calcLote(l);return(<tr key={l.id}><td className="fw7">{l.nombre}</td><td className="text-muted">{l.tropa||"—"}</td><td>{l.cabezas}</td><td>{c.diasEncierro}</td><td className="text-accent">{fmt(c.gdp,3)}</td><td>{fmtP(c.costo)}</td><td>{fmtP(c.ing)}</td><td className={c.ingObj>=c.ing?"text-accent":"text-muted"}>{fmtP(c.ingObj)}</td><td className={c.mg>=0?"text-accent":"text-danger"}>{fmtP(c.mg)}</td><td className={c.mgObj>=0?"text-accent":"text-danger"}>{fmtP(c.mgObj)}</td><td className={c.roi>=0?"text-accent":"text-danger"}>{fmt(c.roi,1)}%</td><td className={c.roiObj>=0?"text-accent":"text-danger"}>{fmt(c.roiObj,1)}%</td><td><span className={"tag "+(l.estado==="vendido"?"tag-ok":l.estado==="en compra"?"tag-info":"tag-warn")}>{l.estado}</span></td><td><button className="btn btn-ghost btn-sm" onClick={()=>exportLote(l)}>⬇</button></td></tr>);})}</tbody>
+            </table></div>
+          </div>
+        </>}
+
+        {/* LOTES */}
+        {tab==="lotes"&&<>
+          <div className="flex-sb" style={{marginBottom:"1.2rem"}}>
+            <div className="section-title" style={{marginBottom:0}}>Gestión de <span>Lotes</span></div>
+            <button className="btn btn-primary" onClick={()=>{setLoteForm({nombre:"",tropa:"",fechaEntrada:todayStr(),cabezas:0,pesoBuyer:0,pesoActual:0,diasEncierroObj:90,pesoObjetivo:0,precioCompra:0,precioVenta:0,costoAlimentoXkgG:0,sanidad:10000,flete:0,comision:3,diasEncierro:0,estado:"activo"});setEditLoteId(null);setShowLoteForm(true);}}>+ Nuevo Lote</button>
+          </div>
+          {showLoteForm&&<div className="card" style={{marginBottom:"1.5rem"}}><div className="card-header"><span className="card-title">{editLoteId?"Editar":"Nuevo"} Lote</span><button className="btn btn-ghost btn-sm" onClick={()=>setShowLoteForm(false)}>Cancelar</button></div>
+            <div className="card-body"><div className="form-grid">
+              {/* BUG FIX: added tropa and pesoActual fields */}
+              {[["nombre","Nombre del lote","text"],["tropa","Raza / Categoría","text"],["fechaEntrada","Fecha de entrada","date"],["cabezas","Cantidad de cabezas","number"],["pesoBuyer","Peso de entrada (kg/cab)","number"],["pesoActual","Peso actual (kg/cab, 0 = igual a entrada)","number"],["diasEncierroObj","Días de encierre objetivo","number"],["pesoObjetivo","Peso objetivo de salida (kg/cab)","number"],["precioCompra","Precio de compra ($/kg)","number"],["precioVenta","Precio de venta ($/kg, 0 = usar mercado)","number"],["costoAlimentoXkgG","Costo de alimento ($/kg ganado)","number"],["sanidad","Sanidad ($/cab)","number"],["flete","Flete ($/kg entrada)","number"],["comision","Comisión sobre compra (%)","number"]].map(([k,lbl,t])=>(
+                <div className="field" key={k}><label>{lbl}</label><input type={t} step="any" value={loteForm[k]??""} onChange={e=>setLoteForm(p=>({...p,[k]:e.target.value}))}/></div>
+              ))}
+              <div className="field"><label>Estado</label><select value={loteForm.estado??"activo"} onChange={e=>setLoteForm(p=>({...p,estado:e.target.value}))}><option value="activo">Activo</option><option value="vendido">Vendido</option><option value="en compra">En compra</option></select></div>
+            </div><div className="mt1 flex-end"><button className="btn btn-primary" onClick={saveLote}>Guardar</button></div></div>
+          </div>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:"1rem"}}>
+            {lotes.map(l=>{
+              const c=calcLote(l);
+              const expanded=expandedLote===l.id;
+              return(
+                <div key={l.id} style={{background:"var(--card)",border:"1px solid "+(expanded?"var(--accent)":"var(--border)"),borderRadius:8,overflow:"hidden",transition:"border-color .2s"}}>
+                  <div style={{padding:"1rem 1.2rem",cursor:"pointer",userSelect:"none"}} onClick={()=>setExpandedLote(expanded?null:l.id)}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:".6rem"}}>
+                      <div>
+                        <div style={{fontFamily:"var(--font-h)",fontWeight:900,fontSize:"1.1rem",color:"var(--text)",letterSpacing:".04em"}}>{l.nombre}</div>
+                        <div style={{fontSize:".72rem",color:"var(--muted)",marginTop:".15rem",display:"flex",alignItems:"center",gap:".5rem",flexWrap:"wrap"}}>
+                          <span>{l.tropa||"Sin raza"}</span>
+                          <span>·</span>
+                          <span>{l.cabezas} cab</span>
+                          <span>·</span>
+                          <span>{c.diasEncierro}/{l.diasEncierroObj}d</span>
+                          <span>·</span>
+                          {editingPeso===l.id
+                            ?<span style={{display:"inline-flex",alignItems:"center",gap:".3rem"}} onClick={e=>e.stopPropagation()}>
+                              <input type="number" value={tempPeso} onChange={e=>setTempPeso(e.target.value)}
+                                style={{width:70,background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:3,color:"var(--text)",padding:"2px 5px",fontSize:".78rem",fontFamily:"var(--font-b)",minHeight:32}}
+                                autoFocus onKeyDown={e=>{if(e.key==="Enter"){setLotes(p=>p.map(x=>x.id===l.id?{...x,pesoActual:+tempPeso}:x));setPesadas(p=>[...p,{id:Date.now(),loteId:l.id,fecha:todayStr(),peso:+tempPeso,cabezas:l.cabezas,nota:"Manual"}]);setEditingPeso(null);}}}/>
+                              <button className="btn btn-primary btn-sm" style={{padding:"2px 8px",fontSize:".72rem",minHeight:32}} onClick={e=>{e.stopPropagation();setLotes(p=>p.map(x=>x.id===l.id?{...x,pesoActual:+tempPeso}:x));setPesadas(p=>[...p,{id:Date.now(),loteId:l.id,fecha:todayStr(),peso:+tempPeso,cabezas:l.cabezas,nota:"Manual"}]);setEditingPeso(null);}}>✓</button>
+                              <button className="btn btn-ghost btn-sm" style={{padding:"2px 8px",fontSize:".72rem",minHeight:32}} onClick={e=>{e.stopPropagation();setEditingPeso(null);}}>✕</button>
+                            </span>
+                            :<span style={{color:"var(--text)",fontWeight:700,cursor:"pointer",borderBottom:"1px dashed var(--accent)"}} title="Tap para editar peso" onClick={e=>{e.stopPropagation();setTempPeso(l.pesoActual);setEditingPeso(l.id);}}>{fmtKg(l.pesoActual)} ✎</span>
+                          }
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+                        <span className={"tag "+(l.estado==="vendido"?"tag-ok":l.estado==="en compra"?"tag-info":"tag-warn")}>{l.estado}</span>
+                        <span style={{color:"var(--muted)",fontSize:"1rem"}}>{expanded?"▲":"▼"}</span>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"1px",background:"var(--border)",borderRadius:4,overflow:"hidden"}}>
+                      {[
+                        ["GDP",c.gdp>0?fmt(c.gdp,2)+" kg/d":"—",c.gdp>=0.9?"var(--accent)":c.gdp>0?"var(--accent2)":"var(--muted)"],
+                        ["Margen obj.",fmtP(c.mgObj),c.mgObj>=0?"var(--accent)":"var(--danger)"],
+                        ["ROI obj.",fmt(c.roiObj,1)+"%",c.roiObj>=0?"var(--accent)":"var(--danger)"],
+                      ].map(([lbl,val,col])=>(
+                        <div key={lbl} style={{background:"var(--bg3)",padding:".5rem .7rem",textAlign:"center"}}>
+                          <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".1em",color:"var(--muted)",fontFamily:"var(--font-h)"}}>{lbl}</div>
+                          <div style={{fontFamily:"var(--font-h)",fontWeight:800,fontSize:"1rem",color:col}}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {expanded&&<div style={{borderTop:"1px solid var(--border)"}}>
+                    <div style={{padding:"1rem 1.2rem"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".6rem",marginBottom:"1rem"}}>
+                        {[
+                          ["Peso entrada",fmtKg(l.pesoBuyer)],
+                          ["Peso objetivo",fmtKg(l.pesoObjetivo)],
+                          ["Kg ganados",fmtKg(c.kgG)],
+                          ["Días restantes",fmt(c.diasR,0)+" días"],
+                          ["Compra / cab",fmtP(c.compra)],
+                          ["Comisión / cab",fmtP(c.comision)],
+                          ["Flete / cab",fmtP(c.fleteTotal)],
+                          ["Sanidad / cab",fmtP(c.sanidad)],
+                          ["Alimento acum.",fmtP(c.costoAlimActual)],
+                          ["Costo total / cab",fmtP(c.costo)],
+                          ["Ingreso hoy / cab",fmtP(c.ing)],
+                          ["Margen hoy / cab",fmtP(c.mg)],
+                          ["Ingreso al obj.",fmtP(c.ingObj)],
+                          ["Margen al obj.",fmtP(c.mgObj)],
+                        ].map(([lbl,val])=>{
+                          const isMargen=lbl.includes("Margen");
+                          const numVal=parseFloat(val.replace(/[^0-9.-]/g,"").replace(/\./g,"")||"0");
+                          return(
+                          <div key={lbl} style={{background:"var(--bg3)",borderRadius:4,padding:".5rem .7rem"}}>
+                            <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".08em",color:"var(--muted)",fontFamily:"var(--font-h)"}}>{lbl}</div>
+                            <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".95rem",color:isMargen?(numVal>=0?"var(--accent)":"var(--danger)"):"var(--text)"}}>{val}</div>
+                          </div>
+                        );})}
+                      </div>
+                      <div style={{marginBottom:".8rem"}}>
+                        <button className="btn btn-ghost btn-sm" style={{width:"100%",textAlign:"left"}} onClick={()=>setExpandedPeso(expandedPeso===l.id?null:l.id)}>
+                          {expandedPeso===l.id?"▲":"▼"} Detalle de pesadas y proyección ({pesadas.filter(p=>p.loteId===l.id).length} registros)
+                        </button>
+                      </div>
+
+                      {expandedPeso===l.id&&(()=>{
+                        const ps=pesadas.filter(p=>p.loteId===l.id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+                        const gdpRef=c.gdp>0?c.gdp:0;
+                        const proyeccion=[];
+                        if(gdpRef>0&&l.pesoActual<l.pesoObjetivo){
+                          let p=l.pesoActual,d=0;
+                          while(p<l.pesoObjetivo&&d<=180){
+                            d+=14;p=Math.min(l.pesoActual+gdpRef*d,l.pesoObjetivo);
+                            const fecha=new Date(Date.now()+d*86400000).toISOString().slice(0,10);
+                            proyeccion.push({fecha,peso:Math.round(p*10)/10,proyectado:true});
+                          }
+                        }
+                        return(
+                          <div style={{marginBottom:"1rem"}}>
+                            {ps.length>0?(
+                              <div style={{overflowX:"auto",marginBottom:"1rem"}}>
+                                <table className="tbl" style={{fontSize:".8rem"}}>
+                                  <thead><tr><th>Fecha</th><th>Peso</th><th>Cab.</th><th>GDP vs ant.</th><th>Días</th><th>Nota</th><th></th></tr></thead>
+                                  <tbody>
+                                    {ps.map((p,i)=>{
+                                      const prev=ps[i-1];
+                                      let gdpVal=null,diasDif=null;
+                                      if(prev){
+                                        diasDif=Math.round((new Date(p.fecha)-new Date(prev.fecha))/86400000);
+                                        if(diasDif>0)gdpVal=(p.peso-prev.peso)/diasDif;
+                                      }
+                                      return(
+                                        <tr key={p.id} style={{background:i===ps.length-1?"rgba(143,184,58,.05)":""}}>
+                                          <td>{p.fecha}</td>
+                                          <td className="fw7">{p.peso} kg</td>
+                                          <td>{p.cabezas}</td>
+                                          <td>{gdpVal!==null?<span style={{color:gdpVal>=0.9?"var(--accent)":gdpVal>=0.7?"var(--accent2)":"var(--danger)",fontWeight:700}}>{fmt(gdpVal,3)} kg/d</span>:<span style={{color:"var(--muted)"}}>entrada</span>}</td>
+                                          <td style={{color:"var(--muted)"}}>{diasDif!==null?diasDif+"d":"—"}</td>
+                                          <td style={{color:"var(--muted)",fontSize:".75rem"}}>{p.nota||"—"}</td>
+                                          <td><button style={{background:"none",border:"none",color:"var(--muted)",cursor:"pointer",fontSize:".75rem",minHeight:32,padding:"0 4px"}} onClick={()=>setPesadas(pr=>pr.filter(x=>x.id!==p.id))}>✕</button></td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ):(
+                              <div style={{padding:".8rem",background:"var(--bg3)",borderRadius:4,fontSize:".82rem",color:"var(--muted)",marginBottom:"1rem"}}>
+                                Sin pesadas registradas. Usá el peso actual ✎ para cargar la primera.
+                              </div>
+                            )}
+                            {gdpRef>0&&(
+                              <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:5,padding:"1rem"}}>
+                                <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".85rem",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem",color:"var(--accent2)"}}>
+                                  Proyección al objetivo — GDP {fmt(gdpRef,3)} kg/d
+                                </div>
+                                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:".5rem",marginBottom:".6rem"}}>
+                                  {proyeccion.map((pt,i)=>(
+                                    <div key={i} style={{background:"var(--bg2)",borderRadius:4,padding:".5rem .7rem",border:"1px solid var(--border)"}}>
+                                      <div style={{fontSize:".62rem",color:"var(--muted)",fontFamily:"var(--font-h)",textTransform:"uppercase"}}>{pt.fecha}</div>
+                                      <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1rem",color:pt.peso>=l.pesoObjetivo?"var(--accent)":"var(--text)"}}>{pt.peso} kg{pt.peso>=l.pesoObjetivo?" ✓":""}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div style={{fontSize:".75rem",color:"var(--muted)"}}>
+                                  Peso actual: <b style={{color:"var(--text)"}}>{l.pesoActual} kg</b> → Objetivo: <b style={{color:"var(--accent)"}}>{l.pesoObjetivo} kg</b> · Faltan <b style={{color:"var(--accent2)"}}>{fmt(c.diasR,0)} días</b> ({new Date(Date.now()+c.diasR*86400000).toISOString().slice(0,10)})
+                                </div>
+                              </div>
+                            )}
+                            {gdpRef===0&&ps.length<2&&(
+                              <div style={{fontSize:".78rem",color:"var(--muted)",padding:".6rem",background:"var(--bg3)",borderRadius:4}}>
+                                Cargá al menos 2 pesadas para ver la proyección al objetivo.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      <div style={{display:"flex",gap:".5rem",flexWrap:"wrap"}}>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>exportLote(l)}>⬇ CSV</button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>{setLoteForm({...l});setEditLoteId(l.id);setShowLoteForm(true);setExpandedLote(null);}}>Editar</button>
+                        <button className="btn btn-danger btn-sm" onClick={()=>{if(window.confirm("¿Eliminar "+l.nombre+"?"))setLotes(p=>p.filter(x=>x.id!==l.id));}}>Eliminar</button>
+                      </div>
+                    </div>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        </>}
+
+        {/* HISTORIAL */}
+        {tab==="historial"&&<>
+          <div className="flex-sb" style={{marginBottom:"1.2rem"}}>
+            <div className="section-title" style={{marginBottom:0}}>Historial & <span>GDP</span></div>
+            <div style={{display:"flex",gap:".8rem",alignItems:"center",flexWrap:"wrap"}}>
+              <select className="sel" value={selLote} onChange={e=>setSelLote(+e.target.value)}>{lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}</select>
+              <button className="btn btn-primary btn-sm" onClick={()=>{const l=lotes.find(x=>x.id===selLote);setPesadaForm({loteId:selLote,fecha:todayStr(),peso:l?.pesoActual||0,cabezas:l?.cabezas||0,nota:""});setShowPesadaForm(true);}}>+ Cargar pesada</button>
+            </div>
+          </div>
+          {showPesadaForm&&<div className="card" style={{marginBottom:"1.5rem"}}><div className="card-header"><span className="card-title">Nueva Pesada</span><button className="btn btn-ghost btn-sm" onClick={()=>setShowPesadaForm(false)}>Cancelar</button></div>
+            <div className="card-body"><div className="form-grid">
+              <div className="field"><label>Lote</label><select value={pesadaForm.loteId} onChange={e=>setPesadaForm(p=>({...p,loteId:+e.target.value}))}>{lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}</select></div>
+              <div className="field"><label>Fecha</label><input type="date" value={pesadaForm.fecha} onChange={e=>setPesadaForm(p=>({...p,fecha:e.target.value}))}/></div>
+              <div className="field"><label>Peso promedio (kg)</label><input type="number" value={pesadaForm.peso} onChange={e=>setPesadaForm(p=>({...p,peso:+e.target.value}))}/></div>
+              <div className="field"><label>Cabezas pesadas</label><input type="number" value={pesadaForm.cabezas} onChange={e=>setPesadaForm(p=>({...p,cabezas:+e.target.value}))}/></div>
+              <div className="field"><label>Nota</label><input type="text" value={pesadaForm.nota} onChange={e=>setPesadaForm(p=>({...p,nota:e.target.value}))}/></div>
+            </div><div className="mt1 flex-end"><button className="btn btn-primary" onClick={()=>{const np={...pesadaForm,id:Date.now()};setPesadas(prev=>[...prev,np]);setLotes(prev=>prev.map(l=>l.id===np.loteId?{...l,pesoActual:np.peso}:l));setShowPesadaForm(false);}}>Guardar</button></div></div>
+          </div>}
+          {lotes.filter(l=>l.id===selLote).map(l=>{
+            const ps=pesadas.filter(p=>p.loteId===l.id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+            const psDesc=[...ps].reverse();
+            const c=calcLote(l);
+            // Stats para las tarjetas de resumen
+            const gdpPeriods=ps.slice(1).map((p,i)=>{const prev=ps[i];const d=Math.round((new Date(p.fecha)-new Date(prev.fecha))/86400000);return d>0?(p.peso-prev.peso)/d:0;}).filter(g=>g!==0);
+            const gdpUltimo=gdpPeriods.length?gdpPeriods[gdpPeriods.length-1]:0;
+            const gdpProm=gdpPeriods.length?gdpPeriods.reduce((a,b)=>a+b,0)/gdpPeriods.length:0;
+            const gdpMax=gdpPeriods.length?Math.max(...gdpPeriods):0;
+            return(<div key={l.id}>
+              {/* Curva de peso interactiva */}
+              <div className="card" style={{marginBottom:"1.5rem"}}>
+                <div className="card-header">
+                  <span className="card-title">Curva de peso — {l.nombre}</span>
+                  <div style={{display:"flex",gap:"1.2rem"}}>
+                    {ps.length>=1&&[
+                      ["Entrada",ps[0]?.peso+" kg",null],
+                      ["Actual",ps[ps.length-1]?.peso+" kg","var(--accent)"],
+                      ["Ganado",Math.round((ps[ps.length-1]?.peso-(ps[0]?.peso||0))*10)/10+" kg","var(--accent)"],
+                    ].map(([lbl,val,col])=>(
+                      <div key={lbl} style={{textAlign:"right"}}>
+                        <div style={{fontSize:".6rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",letterSpacing:".08em"}}>{lbl}</div>
+                        <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1rem",color:col||"var(--text)"}}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="card-body" style={{paddingBottom:".5rem"}}>
+                  <InteractiveWeightChart pesadas={ps} pesoObjetivo={l.pesoObjetivo} gdpRef={c.gdp}/>
+                </div>
+              </div>
+
+              {/* GDP bar chart */}
+              <div className="card" style={{marginBottom:"1.5rem"}}>
+                <div className="card-header">
+                  <span className="card-title">GDP por período</span>
+                  <div style={{display:"flex",gap:"1.2rem"}}>
+                    {gdpPeriods.length>=1&&[
+                      ["Último",fmt(gdpUltimo,3)+" kg/d",gdpUltimo>=0.9?"var(--accent)":gdpUltimo>=0.7?"var(--accent2)":"var(--danger)"],
+                      ["Promedio",fmt(gdpProm,3)+" kg/d",null],
+                      ["Máximo",fmt(gdpMax,3)+" kg/d","var(--accent)"],
+                    ].map(([lbl,val,col])=>(
+                      <div key={lbl} style={{textAlign:"right"}}>
+                        <div style={{fontSize:".6rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",letterSpacing:".08em"}}>{lbl}</div>
+                        <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1rem",color:col||"var(--text)"}}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="card-body" style={{paddingBottom:".5rem"}}>
+                  <GDPBarChart pesadas={ps}/>
+                  <div style={{display:"flex",gap:"1rem",marginTop:".8rem",flexWrap:"wrap"}}>
+                    {[["≥ 0.9 kg/d","var(--accent)","Óptimo"],["0.7–0.9 kg/d","var(--accent2)","Bajo"],["< 0.7 kg/d","var(--danger)","Crítico"]].map(([v,c,lbl])=>(
+                      <div key={lbl} style={{display:"flex",alignItems:"center",gap:".4rem"}}>
+                        <div style={{width:10,height:10,background:c,borderRadius:2}}/>
+                        <span style={{fontSize:".72rem",color:"var(--muted)",fontFamily:"var(--font-h)"}}>{v} — {lbl}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="card"><div className="card-header"><span className="card-title">Registro — {l.nombre}</span><span className="text-muted" style={{fontSize:".8rem"}}>{psDesc.length} pesadas</span></div>
+                {psDesc.length===0?<div className="empty">Sin pesadas registradas.</div>:<div style={{overflowX:"auto"}}><table className="tbl"><thead><tr><th>Fecha</th><th>Peso (kg)</th><th>Cabezas</th><th>Sexo (M / H)</th><th>GDP vs ant.</th><th>Nota</th><th></th></tr></thead>
+                  <tbody>{psDesc.map((p,i)=>{
+                    const prev=psDesc[i+1];let g=null;
+                    if(prev){const d=Math.round((new Date(p.fecha)-new Date(prev.fecha))/86400000);if(d>0)g=(p.peso-prev.peso)/d;}
+                    const tieneSexo=p.cabezasMachos>0||p.cabezasHembras>0;
+                    return(<tr key={p.id}>
+                      <td>{p.fecha}</td>
+                      <td className="fw7">{p.peso} kg</td>
+                      <td>{p.cabezas}</td>
+                      <td style={{fontSize:".8rem"}}>
+                        {tieneSexo
+                          ?<span>
+                            <span style={{color:"var(--info)",fontWeight:700}}>♂ {p.cabezasMachos}M</span>
+                            {p.pesoPromedioM>0&&<span style={{color:"var(--muted)"}}> ({p.pesoPromedioM}kg)</span>}
+                            {" · "}
+                            <span style={{color:"var(--accent2)",fontWeight:700}}>♀ {p.cabezasHembras}H</span>
+                            {p.pesoPromedioH>0&&<span style={{color:"var(--muted)"}}> ({p.pesoPromedioH}kg)</span>}
+                          </span>
+                          :<span style={{color:"var(--muted)"}}>—</span>}
+                      </td>
+                      <td>{g!==null?<span className={g>=0.9?"text-accent":g>=0.7?"text-accent2":"text-danger"}>{fmt(g,3)} kg/d</span>:"—"}</td>
+                      <td className="text-muted">{p.nota||"—"}</td>
+                      <td><button className="btn btn-ghost btn-sm" style={{padding:"2px 6px",fontSize:".7rem"}} onClick={()=>setPesadas(pr=>pr.filter(x=>x.id!==p.id))}>✕</button></td>
+                    </tr>);
+                  })}</tbody>
+                </table></div>}
+              </div>
+            </div>);
+          })}
+        </>}
+
+        {/* DIETAS */}
+        {tab==="dietas"&&<>
+          <div className="section-title">Registro de <span>Dietas</span></div>
+          <div className="card" style={{marginBottom:"1.5rem"}}><div className="card-header"><span className="card-title">Registrar dieta del día</span></div>
+            <div className="card-body"><div className="form-grid">
+              <div className="field"><label>Lote</label><select value={dietForm.loteId} onChange={e=>setDietForm(p=>({...p,loteId:+e.target.value}))}>{lotes.map(l=><option key={l.id} value={l.id}>{l.nombre} — {l.tropa||"Sin raza"}</option>)}</select></div>
+              <div className="field"><label>Fecha</label><input type="date" value={dietForm.fecha} onChange={e=>setDietForm(p=>({...p,fecha:e.target.value}))}/></div>
+              <div className="field"><label>Descripción de dieta</label><input type="text" placeholder="Silaje + Maíz + Núcleo proteico" value={dietForm.dieta} onChange={e=>setDietForm(p=>({...p,dieta:e.target.value}))}/></div>
+              <div className="field"><label>kg MS / cab / día</label><input type="number" step=".1" value={dietForm.kgMs} onChange={e=>setDietForm(p=>({...p,kgMs:+e.target.value}))}/></div>
+              <div className="field"><label>Costo dieta ($/cab/día)</label><input type="number" value={dietForm.costo} onChange={e=>setDietForm(p=>({...p,costo:+e.target.value}))}/></div>
+              <div className="field"><label>Nota</label><input type="text" value={dietForm.nota} onChange={e=>setDietForm(p=>({...p,nota:e.target.value}))}/></div>
+            </div>
+            {/* BUG FIX: removed invalid setLotes mutation on diet save */}
+            <div className="mt1 flex-end"><button className="btn btn-primary" onClick={()=>{const nd={...dietForm,id:Date.now()};setDietas(prev=>[...prev,nd]);setDietForm(p=>({...p,dieta:"",nota:""}));}}>Registrar</button></div>
+            </div>
+          </div>
+          <div className="grid-2">{lotes.map(l=>{
+            const ds=dietas.filter(d=>d.loteId===l.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+            const ctotal=ds.reduce((a,d)=>a+d.costo,0),kgP=ds.length?ds.reduce((a,d)=>a+d.kgMs,0)/ds.length:0;
+            return(<div className="card" key={l.id}><div className="card-header"><span className="card-title">{l.nombre}</span><span className="tag tag-info">{ds.length} registros</span></div>
+              <div className="card-body">
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:".8rem",marginBottom:"1rem"}}>{[["Registros",ds.length],["Costo acumulado",fmtP(ctotal)],["kg MS prom/día",fmt(kgP,2)]].map(([lbl,val])=>(
+                  <div key={lbl}><div style={{fontSize:".62rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",marginBottom:".2rem"}}>{lbl}</div><div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1rem"}}>{val}</div></div>
+                ))}</div>
+                {ds.length>0&&<div style={{overflowX:"auto"}}><table className="tbl" style={{fontSize:".8rem"}}><thead><tr><th>Fecha</th><th>Dieta</th><th>kg MS/cab</th><th>$/cab</th><th>Total lote</th><th></th></tr></thead>
+                  <tbody>{ds.slice(0,6).map(d=>(<tr key={d.id}><td>{d.fecha}</td><td>{d.dieta||"—"}</td><td>{d.kgMs}</td><td>{fmtP(d.costo)}</td><td className="text-accent2">{fmtP(d.costo*l.cabezas)}</td><td><button className="btn btn-ghost btn-sm" style={{padding:"2px 6px",fontSize:".7rem"}} onClick={()=>setDietas(p=>p.filter(x=>x.id!==d.id))}>✕</button></td></tr>))}</tbody>
+                </table></div>}
+              </div>
+            </div>);
+          })}</div>
+        </>}
+
+        {/* ALERTAS */}
+        {tab==="alertas"&&<>
+          <div className="section-title">Alertas <span>Automáticas</span></div>
+          {alertas.length===0?<div className="card"><div className="empty">✅ Todo en orden — no hay alertas activas.</div></div>:<>
+            <div style={{fontSize:".8rem",color:"var(--muted)",marginBottom:"1rem"}}>{alertas.filter(a=>a.tipo==="err").length} críticas · {alertas.filter(a=>a.tipo==="warn").length} advertencias · {alertas.filter(a=>a.tipo==="ok").length} informativas</div>
+            {["err","warn","ok"].flatMap(tipo=>alertas.filter(a=>a.tipo===tipo).map((a,i)=>(
+              <div key={tipo+i} className={"alert-card "+a.tipo}><div className="alert-icon">{a.tipo==="err"?"🚨":a.tipo==="warn"?"⚠️":"✅"}</div>
+                <div><div className="alert-title" style={{color:a.tipo==="err"?"#e74c3c":a.tipo==="warn"?"var(--accent2)":"var(--accent)"}}>{a.lote}</div><div className="alert-desc">{a.msg}</div></div>
+              </div>
+            )))}
+            <div className="card mt2"><div className="card-header"><span className="card-title">Umbrales configurados</span></div><div className="card-body">
+              <table className="tbl"><thead><tr><th>Alerta</th><th>Condición</th><th>Tipo</th></tr></thead>
+                <tbody>{[["GDP crítico","< 0.7 kg/día","err"],["GDP bajo","< 0.9 kg/día","warn"],["Listo para vender","≤ 7 días para objetivo","ok"],["Margen negativo","Margen < $0","err"],["Sin pesada reciente","> 21 días sin pesar","warn"]].map(([n,c,t])=>(
+                  <tr key={n}><td className="fw7">{n}</td><td>{c}</td><td><span className={"tag tag-"+(t==="err"?"err":t==="warn"?"warn":"ok")}>{t==="err"?"Crítica":t==="warn"?"Advertencia":"Info"}</span></td></tr>
+                ))}</tbody>
+              </table>
+            </div></div>
+          </>}
+        </>}
+
+        {/* TRU-TEST */}
+        {tab==="trutest"&&<>
+          <div className="section-title">Importar Pesadas <span>Tru-Test</span></div>
+          <div className="card" style={{marginBottom:"1.5rem"}}><div className="card-header"><span className="card-title">Flujo de importación</span></div>
+            <div className="card-body"><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:"1rem"}}>
+              {[["1","Pesás","Indicador Tru-Test 5000 / 3000 / EziWeigh."],["2","Exportás CSV","DataLink PC o App → Sesión → Exportar → CSV."],["3","Subís acá","Arrastrás o seleccionás el archivo."],["4","Aplicás","El sistema actualiza pesos y guarda pesadas en el historial."]].map(([n,t,d])=>(
+                <div key={n} style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:5,padding:"1rem",display:"flex",gap:".8rem"}}>
+                  <div style={{background:"var(--accent)",color:"var(--bg)",width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--font-h)",fontWeight:900,fontSize:".85rem",flexShrink:0}}>{n}</div>
+                  <div><div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".9rem",marginBottom:".2rem"}}>{t}</div><div style={{fontSize:".8rem",color:"var(--muted)"}}>{d}</div></div>
+                </div>
+              ))}
+            </div></div>
+          </div>
+          <div className="card" style={{marginBottom:"1.5rem"}}><div className="card-header"><span className="card-title">Cargar archivo</span></div>
+            <div className="card-body">
+              <div className={"drop-zone"+(ttDrag?" drag-over":"")} onDragOver={e=>{e.preventDefault();setTtDrag(true);}} onDragLeave={()=>setTtDrag(false)} onDrop={e=>{e.preventDefault();setTtDrag(false);handleTTFile(e.dataTransfer.files[0]);}} onClick={()=>document.getElementById("tt-inp").click()}>
+                <div style={{fontSize:"2rem",marginBottom:".6rem"}}>📂</div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1.1rem",textTransform:"uppercase",letterSpacing:".06em"}}>{ttFile||"Arrastrá el CSV de Tru-Test acá"}</div>
+                <div style={{fontSize:".8rem",color:"var(--muted)",marginTop:".3rem"}}>{ttFile?ttRows.length+" filas detectadas":"o hacé click — .csv separado por coma o punto y coma"}</div>
+                <input id="tt-inp" type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>handleTTFile(e.target.files[0])}/>
+              </div>
+              {ttHeaders.length>0&&<div style={{marginTop:"1.2rem",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"1rem"}}>
+                <div className="field"><label>Columna de PESO</label><select value={ttColW} onChange={e=>setTtColW(e.target.value)}><option value="">— Seleccionar —</option>{ttHeaders.map(h=><option key={h} value={h}>{h}</option>)}</select></div>
+                <div className="field"><label>Columna de LOTE / Grupo</label><select value={ttColL} onChange={e=>setTtColL(e.target.value)}><option value="">— Sin lote —</option>{ttHeaders.map(h=><option key={h} value={h}>{h}</option>)}</select></div>
+                <div className="field">
+                  <label>Columna de SEXO <span style={{color:"var(--accent)",fontSize:".65rem"}}>(opcional)</span></label>
+                  <select value={ttColS} onChange={e=>setTtColS(e.target.value)}>
+                    <option value="">— Sin columna de sexo —</option>
+                    {ttHeaders.map(h=><option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              </div>}
+            </div>
+          </div>
+          {ttPrev.length>0&&!ttDone&&<div className="card" style={{marginBottom:"1.5rem"}}>
+            <div className="card-header">
+              <span className="card-title">Vista previa — {ttPrev.length} grupo{ttPrev.length>1?"s":""}</span>
+              <div style={{display:"flex",alignItems:"center",gap:".8rem",flexWrap:"wrap"}}>
+                <div className="field" style={{margin:0,display:"flex",alignItems:"center",gap:".4rem"}}>
+                  <label style={{fontSize:".75rem",color:"var(--muted)",whiteSpace:"nowrap"}}>Fecha pesada</label>
+                  <input type="date" value={ttDate} onChange={e=>setTtDate(e.target.value)} style={{padding:"4px 8px",fontSize:".82rem"}}/>
+                </div>
+                <button className="btn btn-primary" onClick={applyTT} disabled={ttPrev.every(p=>!p.manualLoteId)}>Aplicar y guardar</button>
+              </div>
+            </div>
+            <div style={{overflowX:"auto"}}><table className="tbl">
+              <thead><tr>
+                <th>Animales</th>
+                <th>Peso prom.</th>
+                <th>Mín / Máx</th>
+                {ttColS&&<th>Desglose por sexo</th>}
+                <th>Asignar a lote</th>
+                <th>Peso actual</th>
+                <th>Δ</th>
+              </tr></thead>
+              <tbody>{ttPrev.map((p,i)=>{
+                const loteSelec=lotes.find(l=>l.id===+p.manualLoteId)||null;
+                const d=loteSelec?Math.round((p.avg-loteSelec.pesoActual)*10)/10:null;
+                return(
+                  <tr key={i}>
+                    <td className="fw7">{p.n} animales</td>
+                    <td className="text-accent fw7">{p.avg} kg</td>
+                    <td className="text-muted">{p.min} / {p.max}</td>
+                    {ttColS&&<td>
+                      {p.machos>0||p.hembras>0?(
+                        <div style={{display:"flex",flexDirection:"column",gap:".2rem",fontSize:".8rem"}}>
+                          {p.machos>0&&<span style={{color:"var(--info)",fontFamily:"var(--font-h)",fontWeight:700}}>
+                            ♂ {p.machos} M {p.avgM>0&&<span style={{fontWeight:400,color:"var(--muted)"}}>({p.avgM} kg)</span>}
+                          </span>}
+                          {p.hembras>0&&<span style={{color:"var(--accent2)",fontFamily:"var(--font-h)",fontWeight:700}}>
+                            ♀ {p.hembras} H {p.avgH>0&&<span style={{fontWeight:400,color:"var(--muted)"}}>({p.avgH} kg)</span>}
+                          </span>}
+                          {p.n-p.machos-p.hembras>0&&<span style={{color:"var(--muted)",fontSize:".75rem"}}>{p.n-p.machos-p.hembras} sin clasificar</span>}
+                        </div>
+                      ):(
+                        <span style={{color:"var(--muted)",fontSize:".78rem"}}>
+                          {p.cats.length>0?p.cats.join(", "):"Sin datos"}
+                        </span>
+                      )}
+                    </td>}
+                    <td><select className="sel" value={p.manualLoteId||""} onChange={e=>setTtPrev(prev=>prev.map((x,j)=>j===i?{...x,manualLoteId:e.target.value}:x))}><option value="">— Seleccionar —</option>{lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}</select></td>
+                    <td>{loteSelec?fmtKg(loteSelec.pesoActual):"—"}</td>
+                    <td>{d!==null?<span style={{color:d>0?"var(--accent)":d<0?"var(--danger)":"var(--muted)",fontFamily:"var(--font-h)",fontWeight:700}}>{d>0?"+":""}{d} kg</span>:"—"}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table></div>
+          </div>}
+          {ttDone&&<div className="card"><div className="card-header"><span className="card-title" style={{color:"var(--accent)"}}>✓ Importación aplicada — {ttDone.updated} lotes actualizados</span><button className="btn btn-ghost btn-sm" onClick={()=>{setTtFile(null);setTtRows([]);setTtHeaders([]);setTtPrev([]);setTtDone(null);}}>Nueva importación</button></div>
+            <div className="card-body"><table className="tbl"><thead><tr><th>Lote</th><th>Antes</th><th>Después</th><th>Δ</th><th>Animales</th><th>Desglose</th></tr></thead>
+              <tbody>{ttDone.log.map((r,i)=>{
+                const d=Math.round((r.despues-r.antes)*10)/10;
+                return<tr key={i}>
+                  <td className="fw7">{r.lote}</td>
+                  <td>{r.antes} kg</td>
+                  <td className="text-accent fw7">{r.despues} kg</td>
+                  <td className={d>=0?"text-accent":"text-danger"}>{d>=0?"+":""}{d} kg</td>
+                  <td>{r.n}</td>
+                  <td style={{fontSize:".8rem"}}>
+                    {(r.machos>0||r.hembras>0)
+                      ?<span><span style={{color:"var(--info)"}}>♂ {r.machos}M</span> · <span style={{color:"var(--accent2)"}}>♀ {r.hembras}H</span></span>
+                      :<span style={{color:"var(--muted)"}}>—</span>}
+                  </td>
+                </tr>;
+              })}</tbody>
+            </table><div style={{marginTop:"1rem",fontSize:".8rem",color:"var(--accent)"}}>✓ Pesadas guardadas en el historial.</div></div>
+          </div>}
+        </>}
+
+        {/* SIMULADOR */}
+        {tab==="simulador"&&(()=>{
+          const calcAt=(l,p)=>{
+            const c=calcLote(l);
+            const ing=p*l.pesoActual;
+            const ingObj=p*l.pesoObjetivo;
+            const mg=ing-c.costo;
+            const mgObj=ingObj-c.costoObj;
+            const roi=c.costo>0?(mg/c.costo)*100:0;
+            const roiObj=c.costoObj>0?(mgObj/c.costoObj)*100:0;
+            const bePeso=l.pesoActual>0?c.costo/l.pesoActual:0;
+            const beObj=l.pesoObjetivo>0?c.costoObj/l.pesoObjetivo:0;
+            return{...c,ing,ingObj,mg,mgObj,roi,roiObj,bePeso,beObj};
+          };
+          const fleetSim=lotes.reduce((a,l)=>{const c=calcAt(l,simPrecio);a.mg+=c.mg*l.cabezas;a.cost+=c.costo*l.cabezas;return a;},{mg:0,cost:0});
+          const fleetSimROI=fleetSim.cost>0?(fleetSim.mg/fleetSim.cost)*100:0;
+          const fleetBase=lotes.reduce((a,l)=>{const c=calcLote(l);a.mg+=c.mg*l.cabezas;a.cost+=c.costo*l.cabezas;return a;},{mg:0,cost:0});
+          const deltaMgFleet=fleetSim.mg-fleetBase.mg;
+          const lotesGanando=lotes.filter(l=>calcAt(l,simPrecio).mg>=0).length;
+          const sliderMin=Math.floor(precioMercado*0.3);
+          const sliderMax=Math.ceil(precioMercado*2.5);
+          const pctVsMercado=((simPrecio-precioMercado)/precioMercado*100);
+          const sensPcts=[-30,-20,-10,0,10,20,30];
+          return(<>
+            <div className="section-title">Simulador de <span>Precio</span></div>
+
+            {/* Slider principal */}
+            <div className="card" style={{marginBottom:"1.5rem"}}>
+              <div className="card-header">
+                <span className="card-title">Precio de venta simulado ($/kg)</span>
+                <button className="btn btn-ghost btn-sm" onClick={()=>setSimPrecio(precioMercado)}>↺ Resetear al mercado</button>
+              </div>
+              <div className="card-body">
+                <div className="sim-price-display">{fmtP(simPrecio)}<span style={{fontSize:"1.1rem",color:"var(--muted)",marginLeft:".6rem",fontWeight:400}}>/ kg</span></div>
+                <div style={{margin:"1.4rem 0 .8rem"}}>
+                  <input type="range" className="sim-slider" min={sliderMin} max={sliderMax} step={10} value={simPrecio} onChange={e=>setSimPrecio(+e.target.value)}/>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"var(--muted)",marginTop:".35rem",fontFamily:"var(--font-h)"}}>
+                    <span>{fmtP(sliderMin)}</span>
+                    <span>{fmtP(sliderMax)}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:"2rem",justifyContent:"center",flexWrap:"wrap",paddingTop:".5rem",borderTop:"1px solid var(--border)"}}>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:".65rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",letterSpacing:".1em",marginBottom:".2rem"}}>Precio mercado actual</div>
+                    <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1.15rem",color:"var(--accent2)"}}>{fmtP(precioMercado)}/kg</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:".65rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",letterSpacing:".1em",marginBottom:".2rem"}}>Δ vs mercado</div>
+                    <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1.15rem",color:simPrecio>=precioMercado?"var(--accent)":"var(--danger)"}}>
+                      {simPrecio>=precioMercado?"+":""}{fmtP(simPrecio-precioMercado)} &nbsp;
+                      <span style={{fontSize:".85rem",opacity:.8}}>({pctVsMercado>=0?"+":""}{fmt(pctVsMercado,1)}%)</span>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:".65rem",textTransform:"uppercase",color:"var(--muted)",fontFamily:"var(--font-h)",letterSpacing:".1em",marginBottom:".2rem"}}>Estado flota</div>
+                    <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:"1.15rem",color:fleetSim.mg>=0?"var(--accent)":"var(--danger)"}}>
+                      {fleetSim.mg>=0?"✅ Ganancia":"🚨 Pérdida"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* KPIs al precio simulado */}
+            <div className="kpi-strip" style={{marginBottom:"1.5rem"}}>
+              {[
+                ["Margen total flota",fleetSim.mg>=0?"pos":"neg",fmtP(fleetSim.mg),"al precio simulado"],
+                ["ROI flota",fleetSimROI>=0?"pos":"neg",fmt(fleetSimROI,1)+"%","al precio simulado"],
+                ["Δ margen vs config",deltaMgFleet>=0?"pos":"neg",(deltaMgFleet>=0?"+":"")+fmtP(deltaMgFleet),"diferencia total flota"],
+                ["Lotes en ganancia",lotesGanando===lotes.length?"pos":lotesGanando>0?"neu":"neg",lotesGanando+" / "+lotes.length,"al precio simulado"],
+              ].map(([l,c,v,s])=>(
+                <div className="kpi" key={l}><div className="kpi-label">{l}</div><div className={"kpi-value "+c}>{v}</div><div className="kpi-sub">{s}</div></div>
+              ))}
+            </div>
+
+            {/* Tabla por lote */}
+            <div className="card" style={{marginBottom:"1.5rem"}}>
+              <div className="card-header"><span className="card-title">Resultado por lote al precio simulado</span></div>
+              <div style={{overflowX:"auto"}}><table className="tbl">
+                <thead><tr><th>Lote</th><th>Cab.</th><th>Precio ref.</th><th>Margen actual</th><th>Margen simulado</th><th>Δ/cab</th><th>ROI sim.</th><th>Break-even hoy</th><th>Break-even obj.</th><th>Estado</th></tr></thead>
+                <tbody>{lotes.map(l=>{
+                  const base=calcLote(l);
+                  const sim=calcAt(l,simPrecio);
+                  const precioRef=l.precioVenta>0?l.precioVenta:precioMercado;
+                  const delta=sim.mg-base.mg;
+                  return(<tr key={l.id}>
+                    <td className="fw7">{l.nombre}</td>
+                    <td>{l.cabezas}</td>
+                    <td className="text-accent2">{fmtP(precioRef)}</td>
+                    <td className={base.mg>=0?"text-accent":"text-danger"}>{fmtP(base.mg)}</td>
+                    <td className={sim.mg>=0?"text-accent":"text-danger"} style={{fontWeight:700}}>{fmtP(sim.mg)}</td>
+                    <td className={delta>=0?"text-accent":"text-danger"}>{delta>=0?"+":""}{fmtP(delta)}</td>
+                    <td className={sim.roi>=0?"text-accent":"text-danger"}>{fmt(sim.roi,1)}%</td>
+                    <td style={{color:"var(--muted)",fontSize:".82rem"}}>{fmtP(sim.bePeso)}/kg</td>
+                    <td style={{color:"var(--muted)",fontSize:".82rem"}}>{fmtP(sim.beObj)}/kg</td>
+                    <td>{sim.mg>=0?<span className="tag tag-ok">Ganancia</span>:<span className="tag tag-err">Pérdida</span>}</td>
+                  </tr>);
+                })}</tbody>
+              </table></div>
+            </div>
+
+            {/* Tabla de sensibilidad */}
+            <div className="card">
+              <div className="card-header">
+                <span className="card-title">Sensibilidad — Margen/cab por nivel de precio</span>
+                <span className="text-muted" style={{fontSize:".78rem"}}>relativo al precio simulado ({fmtP(simPrecio)}/kg)</span>
+              </div>
+              <div style={{overflowX:"auto"}}><table className="tbl">
+                <thead><tr>
+                  <th>Lote</th>
+                  {sensPcts.map(p=><th key={p} style={{textAlign:"center",color:p<0?"var(--danger)":p===0?"var(--accent2)":"var(--accent)",fontFamily:"var(--font-h)"}}>
+                    <div>{p>0?"+":""}{p}%</div>
+                    <div style={{fontWeight:400,fontSize:".68rem",color:"var(--muted)"}}>{fmtP(Math.round(simPrecio*(1+p/100)))}</div>
+                  </th>)}
+                </tr></thead>
+                <tbody>{lotes.map(l=>(
+                  <tr key={l.id}>
+                    <td className="fw7">{l.nombre}</td>
+                    {sensPcts.map(p=>{
+                      const pr=simPrecio*(1+p/100);
+                      const mg=calcAt(l,pr).mg;
+                      return(<td key={p} className="sens-cell" style={{background:mg>=0?"rgba(143,184,58,.1)":"rgba(192,57,43,.09)",color:mg>=0?"var(--accent)":"var(--danger)",outline:p===0?"2px solid var(--accent2)":"none",outlineOffset:"-2px"}}>
+                        {fmtP(mg)}
+                      </td>);
+                    })}
+                  </tr>
+                ))}</tbody>
+              </table></div>
+              <div style={{padding:".75rem 1.5rem",fontSize:".75rem",color:"var(--muted)",borderTop:"1px solid var(--border)"}}>
+                Margen por cabeza · verde = ganancia · rojo = perdida · La columna 0% = precio simulado actual
+              </div>
+            </div>
+          </>);
+        })()}
+
+        {/* VENTAS */}
+        {tab==="ventas"&&(()=>{
+          /* ── helpers ── */
+          const parseCsvAnimals=text=>{
+            const lines=text.trim().split(/\r?\n/);if(!lines.length)return[];
+            const sep=lines[0].includes(';')?';':',';
+            const hdrs=lines[0].split(sep).map(h=>h.trim().replace(/^["']|["']$/g,'').toLowerCase());
+            const fc=(...ns)=>hdrs.findIndex(h=>ns.some(n=>h.includes(n)));
+            const eidC=fc('eid','rfid','electronico','electronic','transponder');
+            const vidC=fc('vid','visual','tag','caravana','numero','num');
+            const wC=fc('peso','weight','kg','liveweight','live');
+            const sC=fc('sex','sexo','gender','genero','categoria');
+            const out=[];
+            for(let i=1;i<lines.length;i++){
+              const cs=lines[i].split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''));
+              if(!cs.some(c=>c))continue;
+              const peso=wC>=0?+cs[wC]:0;if(!peso)continue;
+              const rawEid=eidC>=0?(cs[eidC]||''):'';
+              const eid=rawEid.length>3?rawEid:null;
+              const vid=vidC>=0?cs[vidC]||null:null;
+              const rs=sC>=0?cs[sC]||'':'';const sl=rs.toLowerCase();
+              const sexo=['m','male','macho','novillo','toro','novillito','1'].some(x=>sl===x||sl.startsWith(x))?'M':
+                         ['f','female','hembra','vaquillona','vaca','ternera','2'].some(x=>sl===x||sl.startsWith(x))?'H':
+                         rs.slice(0,3).toUpperCase()||null;
+              out.push({eid,vid,peso,sexo,eidManual:''});
+            }
+            return out;
+          };
+          /* Busca el loteId que tenga este EID registrado — primero en lotes, luego en pesadas */
+          /* Retorna {loteId, pesoEntrada, fechaEntrada} para un EID dado */
+          const findAnimalData=eid=>{
+            if(!eid)return null;
+            const eidN=eid.trim();
+            // 1. Buscar en lote.animales (tiene pesoEntrada individual)
+            for(const l of lotes){
+              const a=(l.animales||[]).find(x=>(x.eid||'').trim()===eidN||(x.eidManual||'').trim()===eidN);
+              if(a)return{loteId:l.id,pesoEntrada:a.pesoEntrada||null,fechaEntrada:a.fechaEntrada||l.fechaEntrada||null};
+            }
+            // 2. Fallback: pesadas históricas (más reciente primero)
+            const sorted=[...pesadas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+            for(const p of sorted){
+              if(!p.animales)continue;
+              const a=p.animales.find(x=>(x.eid||'').trim()===eidN||(x.eidManual||'').trim()===eidN);
+              if(a){const l=lotes.find(x=>x.id===p.loteId);return{loteId:p.loteId,pesoEntrada:a.pesoEntrada||a.peso||null,fechaEntrada:a.fechaEntrada||l?.fechaEntrada||null};}
+            }
+            return null;
+          };
+          const diasEntre=(f1,f2)=>{if(!f1||!f2)return null;const d=Math.round((new Date(f2)-new Date(f1))/(86400000));return d>0?d:null;};
+          const enriquecerAnimal=(a,saleDate)=>{
+            const data=findAnimalData(a.eid||a.eidManual);
+            const pe=data?.pesoEntrada||null;
+            const fe=data?.fechaEntrada||null;
+            const dias=diasEntre(fe,saleDate);
+            const gdp=(pe&&dias&&a.peso)?(a.peso-pe)/dias:null;
+            return{...a,loteIdFound:data?.loteId||null,pesoEntrada:pe,fechaEntrada:fe,pesoSalida:a.peso,diasEncierro:dias,gdp};
+          };
+          const doEidImport=text=>{
+            const animals=parseCsvAnimals(text);
+            if(!animals.length){alert('No se encontraron animales con peso válido.');return;}
+            const matched={};const unmatched=[];
+            animals.forEach(a=>{
+              const data=findAnimalData(a.eid);
+              if(data?.loteId){
+                if(!matched[data.loteId])matched[data.loteId]=[];
+                matched[data.loteId].push({...a,pesoEntrada:data.pesoEntrada,fechaEntrada:data.fechaEntrada});
+              } else unmatched.push({...a,assignLote:''});
+            });
+            setEidImport({matched,unmatched,bulkLote:''});
+          };
+          const confirmEidImport=()=>{
+            const sDate=ventaForm.fecha||todayStr();
+            const newPartidas=[];
+            Object.entries(eidImport.matched).forEach(([lid,animals])=>{
+              const enriched=animals.map(a=>enriquecerAnimal(a,sDate));
+              const avg=Math.round(enriched.reduce((s,a)=>s+a.pesoSalida,0)/enriched.length*10)/10;
+              newPartidas.push({loteId:+lid,cabezas:enriched.length,pesoVenta:avg,precio:precioMercado,animales:enriched});
+            });
+            const assigned=eidImport.unmatched.filter(a=>a.assignLote);
+            const byA={};assigned.forEach(a=>{if(!byA[a.assignLote])byA[a.assignLote]=[];byA[a.assignLote].push(a);});
+            Object.entries(byA).forEach(([lid,animals])=>{
+              const enriched=animals.map(a=>enriquecerAnimal(a,sDate));
+              const ex=newPartidas.find(p=>p.loteId===+lid);
+              if(ex){ex.animales=[...ex.animales,...enriched];ex.cabezas=ex.animales.length;ex.pesoVenta=Math.round(ex.animales.reduce((s,a)=>s+a.pesoSalida,0)/ex.animales.length*10)/10;}
+              else{const avg=Math.round(enriched.reduce((s,a)=>s+a.pesoSalida,0)/enriched.length*10)/10;newPartidas.push({loteId:+lid,cabezas:enriched.length,pesoVenta:avg,precio:precioMercado,animales:enriched});}
+            });
+            if(!newPartidas.length){alert('No hay partidas para importar.');return;}
+            setVentaForm(f=>({...f,partidas:newPartidas}));
+            setEidImport(null);
+          };
+          const ventaStats=v=>{let ing=0,cost=0,hds=0;v.partidas.forEach(p=>{const cp=p.cabezasLote>0?(p.cabezas/p.cabezasLote)*p.costoTotal:0;ing+=p.cabezas*p.pesoVenta*p.precio;cost+=cp;hds+=+p.cabezas;});return{ing,cost,margen:ing-cost,roi:cost>0?((ing-cost)/cost)*100:0,hds};};
+          const formTotal=(()=>{let ing=0,hds=0;ventaForm.partidas.forEach(p=>{ing+=p.cabezas*p.pesoVenta*p.precio;hds+=+p.cabezas;});return{ing,hds};})();
+          const saveVenta=()=>{
+            const nv={id:Date.now(),fecha:ventaForm.fecha,comprador:ventaForm.comprador,nota:ventaForm.nota,
+              partidas:ventaForm.partidas.map(p=>{const l=lotes.find(x=>x.id===p.loteId)||{};const c=calcLote(l);
+                return{...p,cabezasLote:l.cabezas||0,costoTotal:c.costo||0,pesoBuyer:l.pesoBuyer||0,fechaEntrada:l.fechaEntrada||"",diasEncierro:getDiasEncierro(l)};})};
+            setVentas(prev=>[nv,...prev]);
+            setLotes(prev=>prev.map(l=>{const p=ventaForm.partidas.find(x=>x.loteId===l.id);if(!p)return l;return{...l,cabezas:Math.max(0,l.cabezas-p.cabezas)};}));
+            setShowVentaForm(false);setShowTTFor(null);setEidImport(null);
+            setVentaForm({fecha:todayStr(),comprador:"",nota:"",partidas:[{loteId:lotes[0]?.id||1,cabezas:0,pesoVenta:0,precio:precioMercado,animales:null}]});
+          };
+          const updPartida=(pidx,fn)=>setVentaForm(f=>({...f,partidas:f.partidas.map((p,j)=>j===pidx?fn(p):p)}));
+          /* ── render ── */
+          return(<>
+            <div className="section-title">Registro de <span>Ventas</span></div>
+            {!showVentaForm&&<div style={{marginBottom:"1.5rem"}}>
+              <button className="btn btn-primary" onClick={()=>{setShowVentaForm(true);setShowTTFor(null);setEidImport(null);}}>+ Registrar venta</button>
+            </div>}
+            {showVentaForm&&<div className="card" style={{marginBottom:"1.5rem"}}>
+              <div className="card-header">
+                <span className="card-title">Nueva venta</span>
+                <button className="btn btn-ghost btn-sm" onClick={()=>{setShowVentaForm(false);setShowTTFor(null);setEidImport(null);}}>Cancelar</button>
+              </div>
+              <div className="card-body">
+                {/* Header fields */}
+                <div className="form-grid" style={{marginBottom:"1.2rem"}}>
+                  <div className="field"><label>Fecha</label><input type="date" value={ventaForm.fecha} onChange={e=>setVentaForm(f=>({...f,fecha:e.target.value}))}/></div>
+                  <div className="field"><label>Comprador / Destino</label><input type="text" placeholder="Frigorífico, remate..." value={ventaForm.comprador} onChange={e=>setVentaForm(f=>({...f,comprador:e.target.value}))}/></div>
+                  <div className="field"><label>Nota</label><input type="text" placeholder="Opcional" value={ventaForm.nota} onChange={e=>setVentaForm(f=>({...f,nota:e.target.value}))}/></div>
+                </div>
+
+                {/* ── EID IMPORT ZONE ── */}
+                {!eidImport&&<div style={{marginBottom:"1.4rem",padding:"1rem",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem",marginBottom:".5rem"}}>
+                    <div>
+                      <span style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".82rem",textTransform:"uppercase",letterSpacing:".07em",color:"var(--accent2)"}}>🔍 Importar por EID desde Tru-Test</span>
+                      <div style={{fontSize:".76rem",color:"var(--muted)",marginTop:".2rem"}}>La app ubica cada animal en su lote según las pesadas registradas.</div>
+                    </div>
+                    <label style={{cursor:"pointer"}}>
+                      <span className="btn btn-ghost btn-sm" style={{borderColor:"var(--accent2)",color:"var(--accent2)",pointerEvents:"none"}}>📂 Seleccionar CSV</span>
+                      <input type="file" accept=".csv,.CSV" style={{display:"none"}} onChange={ev=>{
+                        const file=ev.target.files[0];if(!file)return;
+                        const reader=new FileReader();
+                        reader.onload=re=>doEidImport(re.target.result);
+                        reader.readAsText(file);ev.target.value='';
+                      }}/>
+                    </label>
+                  </div>
+                  {(()=>{
+                    const totalEids=lotes.reduce((s,l)=>s+(l.animales?.length||0),0);
+                    const lotesConEid=lotes.filter(l=>l.animales?.length>0);
+                    if(totalEids===0)return<div style={{fontSize:".74rem",color:"var(--accent2)",padding:"4px 8px",background:"rgba(200,162,58,.1)",borderRadius:4,display:"inline-block"}}>⚠️ Sin EIDs registrados — importá primero las pesadas de entrada desde el tab Tru-Test</div>;
+                    return<div style={{fontSize:".74rem",color:"var(--accent)",padding:"4px 8px",background:"rgba(143,184,58,.1)",borderRadius:4,display:"inline-block"}}>✓ {totalEids} EIDs registrados en {lotesConEid.length} lote{lotesConEid.length!==1?"s":""}: {lotesConEid.map(l=>l.nombre+"("+l.animales.length+")").join(", ")}</div>;
+                  })()}
+                </div>}
+
+                {/* ── EID IMPORT RESULTS ── */}
+                {eidImport&&<div style={{marginBottom:"1.4rem",border:"2px solid var(--accent2)",borderRadius:6,overflow:"hidden"}}>
+                  <div style={{background:"rgba(200,162,58,.1)",padding:".75rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".5rem"}}>
+                    <div>
+                      <span style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".85rem",color:"var(--accent2)"}}>Resultado de identificación por EID</span>
+                      <div style={{fontSize:".76rem",color:"var(--muted)",marginTop:".2rem"}}>
+                        {Object.values(eidImport.matched).reduce((s,a)=>s+a.length,0)} identificados en {Object.keys(eidImport.matched).length} lotes
+                        {eidImport.unmatched.length>0&&<span style={{color:"var(--accent2)"}}> · ⚠️ {eidImport.unmatched.length} sin lote</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:".5rem"}}>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>setEidImport(null)}>Cancelar</button>
+                      <button className="btn btn-primary btn-sm" onClick={confirmEidImport}>✓ Confirmar e importar</button>
+                    </div>
+                  </div>
+                  {/* Matched groups */}
+                  {Object.keys(eidImport.matched).length>0&&<div style={{padding:"1rem",borderBottom:eidImport.unmatched.length>0?"1px solid var(--border)":"none"}}>
+                    <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".72rem",textTransform:"uppercase",letterSpacing:".07em",color:"var(--muted)",marginBottom:".6rem"}}>✓ Identificados automáticamente</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:".5rem"}}>
+                      {Object.entries(eidImport.matched).map(([lid,animals])=>{
+                        const l=lotes.find(x=>x.id===+lid);
+                        const avg=Math.round(animals.reduce((s,a)=>s+a.peso,0)/animals.length*10)/10;
+                        return(<div key={lid} style={{background:"rgba(143,184,58,.1)",border:"1px solid var(--accent)",borderRadius:5,padding:".5rem .9rem"}}>
+                          <div style={{fontFamily:"var(--font-h)",fontWeight:700,color:"var(--accent)",fontSize:".82rem"}}>{l?.nombre||"Lote #"+lid}</div>
+                          <div style={{fontSize:".76rem",color:"var(--muted)"}}>{animals.length} animales · {avg} kg prom.</div>
+                        </div>);
+                      })}
+                    </div>
+                  </div>}
+                  {/* Unmatched */}
+                  {eidImport.unmatched.length>0&&<div style={{padding:"1rem"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem",marginBottom:".7rem"}}>
+                      <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".72rem",textTransform:"uppercase",letterSpacing:".07em",color:"var(--accent2)"}}>⚠️ Sin lote identificado ({eidImport.unmatched.length})</div>
+                      <div style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".78rem",color:"var(--muted)"}}>
+                        Asignar todos a:&nbsp;
+                        <select style={{padding:"3px 6px",fontSize:".78rem"}} value={eidImport.bulkLote} onChange={e=>setEidImport(ei=>({...ei,bulkLote:e.target.value}))}>
+                          <option value="">— elegir —</option>
+                          {lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+                        </select>
+                        {eidImport.bulkLote&&<button className="btn btn-ghost btn-sm" style={{fontSize:".72rem",padding:"2px 8px"}}
+                          onClick={()=>setEidImport(ei=>({...ei,unmatched:ei.unmatched.map(a=>({...a,assignLote:ei.bulkLote})),bulkLote:''}))}>
+                          Aplicar
+                        </button>}
+                      </div>
+                    </div>
+                    <div style={{overflowX:"auto"}}>
+                      <table className="tbl" style={{fontSize:".78rem"}}>
+                        <thead><tr><th>#</th><th>EID</th><th>VID</th><th>Peso</th><th>Sexo</th><th>Asignar a lote</th></tr></thead>
+                        <tbody>{eidImport.unmatched.map((a,ui)=>(
+                          <tr key={ui} style={{background:a.assignLote?"rgba(143,184,58,.05)":"rgba(200,162,58,.05)"}}>
+                            <td style={{color:"var(--muted)"}}>{ui+1}</td>
+                            <td style={{fontFamily:"monospace",fontSize:".73rem"}}>{a.eid||<span style={{color:"var(--danger)"}}>Sin EID</span>}</td>
+                            <td style={{color:"var(--muted)"}}>{a.vid||"—"}</td>
+                            <td>{a.peso} kg</td>
+                            <td>{a.sexo?<span style={{color:a.sexo==="M"?"var(--info)":"var(--accent2)",fontWeight:700}}>{a.sexo==="M"?"♂":"♀"} {a.sexo}</span>:"—"}</td>
+                            <td>
+                              <select style={{fontSize:".78rem",padding:"2px 4px"}} value={a.assignLote} onChange={e=>setEidImport(ei=>({...ei,unmatched:ei.unmatched.map((x,j)=>j===ui?{...x,assignLote:e.target.value}:x)}))}>
+                                <option value="">Sin asignar</option>
+                                {lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                    <div style={{fontSize:".73rem",color:"var(--muted)",marginTop:".6rem"}}>Los animales sin asignar no se incluirán en la venta.</div>
+                  </div>}
+                </div>}
+
+                {/* ── PARTIDAS MANUALES / POR LOTE ── */}
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".78rem",textTransform:"uppercase",letterSpacing:".08em",color:"var(--muted)",marginBottom:".8rem"}}>Partidas por lote</div>
+                {ventaForm.partidas.map((p,pidx)=>{
+                  const missingEid=p.animales?p.animales.filter(a=>!a.eid&&!a.eidManual).length:0;
+                  const avgPeso=p.animales?Math.round(p.animales.reduce((s,a)=>s+a.peso,0)/p.animales.length*10)/10:p.pesoVenta;
+                  return(<div key={pidx} style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,marginBottom:".8rem",overflow:"hidden"}}>
+                    <div style={{padding:".75rem 1rem",display:"flex",gap:".75rem",alignItems:"flex-end",flexWrap:"wrap"}}>
+                      <div className="field" style={{margin:0,flex:"1 1 140px"}}>
+                        <label style={{fontSize:".65rem"}}>Lote</label>
+                        <select value={p.loteId} onChange={e=>updPartida(pidx,px=>({...px,loteId:+e.target.value,animales:null}))}>
+                          {lotes.map(l=><option key={l.id} value={l.id}>{l.nombre} ({l.cabezas} cab.)</option>)}
+                        </select>
+                      </div>
+                      <div className="field" style={{margin:0,flex:"0 0 80px"}}>
+                        <label style={{fontSize:".65rem"}}>$/kg</label>
+                        <input type="number" value={p.precio||""} placeholder="precio" onChange={e=>updPartida(pidx,px=>({...px,precio:+e.target.value}))}/>
+                      </div>
+                      {!p.animales&&<>
+                        <div className="field" style={{margin:0,flex:"0 0 78px"}}>
+                          <label style={{fontSize:".65rem"}}>Cabezas</label>
+                          <input type="number" value={p.cabezas||""} placeholder="0" onChange={e=>updPartida(pidx,px=>({...px,cabezas:+e.target.value}))}/>
+                        </div>
+                        <div className="field" style={{margin:0,flex:"0 0 88px"}}>
+                          <label style={{fontSize:".65rem"}}>Peso prom. kg</label>
+                          <input type="number" value={p.pesoVenta||""} placeholder="kg" onChange={e=>updPartida(pidx,px=>({...px,pesoVenta:+e.target.value}))}/>
+                        </div>
+                      </>}
+                      {p.animales&&<div style={{display:"flex",gap:".5rem",alignItems:"center",flexWrap:"wrap",paddingBottom:2}}>
+                        <span style={{background:"rgba(143,184,58,.15)",color:"var(--accent)",border:"1px solid var(--accent)",borderRadius:4,padding:"3px 9px",fontSize:".75rem",fontFamily:"var(--font-h)",fontWeight:700}}>{p.animales.length} animales · {avgPeso} kg</span>
+                        {missingEid>0&&<span style={{background:"rgba(200,162,58,.15)",color:"var(--accent2)",border:"1px solid var(--accent2)",borderRadius:4,padding:"3px 9px",fontSize:".75rem",fontFamily:"var(--font-h)",fontWeight:700}}>⚠️ {missingEid} sin EID</span>}
+                        <button className="btn btn-ghost btn-sm" style={{fontSize:".7rem",padding:"2px 7px"}} onClick={()=>updPartida(pidx,px=>({...px,animales:null,cabezas:0,pesoVenta:0}))}>✕ quitar TT</button>
+                      </div>}
+                      <div style={{flex:1}}/>
+                      {p.cabezas>0&&p.pesoVenta>0&&p.precio>0&&<span style={{fontSize:".85rem",color:"var(--accent)",fontFamily:"var(--font-h)",fontWeight:700,paddingBottom:4}}>${fmt(p.cabezas*p.pesoVenta*p.precio)}</span>}
+                      <button className="btn btn-ghost btn-sm" style={{fontSize:".73rem",padding:"5px 10px",borderColor:"var(--accent2)",color:"var(--accent2)"}} onClick={()=>setShowTTFor(showTTFor===pidx?null:pidx)}>📤 TT por lote</button>
+                      {ventaForm.partidas.length>1&&<button className="btn btn-ghost btn-sm" style={{padding:"5px 8px",color:"var(--danger)"}} onClick={()=>{setVentaForm(f=>({...f,partidas:f.partidas.filter((_,j)=>j!==pidx)}));if(showTTFor===pidx)setShowTTFor(null);}}>✕</button>}
+                    </div>
+                    {showTTFor===pidx&&<div style={{borderTop:"1px solid var(--border)",padding:"1rem",background:"var(--bg2)"}}>
+                      <div style={{fontSize:".75rem",color:"var(--muted)",marginBottom:".7rem",fontFamily:"var(--font-h)",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em"}}>Importar pesada de salida — Tru-Test CSV (para este lote)</div>
+                      <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:".5rem",border:"2px dashed var(--accent2)",borderRadius:6,padding:"1.5rem",cursor:"pointer",color:"var(--accent2)"}}>
+                        <span style={{fontSize:"1.8rem"}}>📂</span>
+                        <span style={{fontFamily:"var(--font-h)",fontWeight:700}}>Seleccioná el CSV de este lote</span>
+                        <span style={{fontSize:".72rem",color:"var(--muted)",textAlign:"center"}}>Detecta EID, VID, peso y sexo automáticamente</span>
+                        <input type="file" accept=".csv,.CSV" style={{display:"none"}} onChange={ev=>{
+                          const file=ev.target.files[0];if(!file)return;
+                          const reader=new FileReader();
+                          reader.onload=re=>{
+                            const animals=parseCsvAnimals(re.target.result);
+                            if(!animals.length){alert('No se encontraron animales con peso válido.');return;}
+                            const avg=Math.round(animals.reduce((s,a)=>s+a.peso,0)/animals.length*10)/10;
+                            updPartida(pidx,px=>({...px,cabezas:animals.length,pesoVenta:avg,animales:animals}));
+                            setShowTTFor(null);
+                          };
+                          reader.readAsText(file);ev.target.value='';
+                        }}/>
+                      </label>
+                    </div>}
+                    {p.animales&&missingEid>0&&<div style={{borderTop:"1px solid var(--border)",padding:"1rem"}}>
+                      <div style={{fontSize:".75rem",fontFamily:"var(--font-h)",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"var(--accent2)",marginBottom:".7rem"}}>⚠️ {missingEid} sin EID — completar manualmente</div>
+                      <div style={{overflowX:"auto"}}>
+                        <table className="tbl" style={{fontSize:".8rem"}}>
+                          <thead><tr><th>#</th><th>VID / caravana visual</th><th>Peso</th><th>Sexo</th><th>EID (caravana electrónica)</th></tr></thead>
+                          <tbody>{p.animales.map((a,aidx)=>!a.eid?(
+                            <tr key={aidx} style={{background:a.eidManual?"rgba(143,184,58,.06)":"rgba(200,162,58,.06)"}}>
+                              <td style={{color:"var(--muted)"}}>{aidx+1}</td>
+                              <td>{a.vid||<span style={{color:"var(--muted)"}}>—</span>}</td>
+                              <td>{a.peso} kg</td>
+                              <td>{a.sexo?<span style={{color:a.sexo==="M"?"var(--info)":"var(--accent2)",fontWeight:700}}>{a.sexo==="M"?"♂ M":"♀ H"}</span>:<span style={{color:"var(--muted)"}}>—</span>}</td>
+                              <td><input type="text" placeholder="Ingresar EID..." style={{width:"100%",fontFamily:"monospace",fontSize:".78rem"}} value={a.eidManual||""} onChange={ev2=>updPartida(pidx,px=>({...px,animales:px.animales.map((ax,k)=>k===aidx?{...ax,eidManual:ev2.target.value}:ax)}))}/></td>
+                            </tr>
+                          ):null)}</tbody>
+                        </table>
+                      </div>
+                    </div>}
+                  </div>);
+                })}
+                <div style={{display:"flex",gap:".8rem",alignItems:"center",flexWrap:"wrap",marginTop:".4rem"}}>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setVentaForm(f=>({...f,partidas:[...f.partidas,{loteId:lotes[0]?.id||1,cabezas:0,pesoVenta:0,precio:precioMercado,animales:null}]}))}>+ Agregar lote</button>
+                  <span style={{fontSize:".82rem",color:"var(--muted)"}}>{formTotal.hds} cab. · Ingreso estimado: <span style={{color:"var(--accent)",fontWeight:700}}>${fmt(formTotal.ing)}</span></span>
+                  <div style={{flex:1}}/>
+                  <button className="btn btn-primary" onClick={saveVenta}>Guardar venta</button>
+                </div>
+              </div>
+            </div>}
+
+            {/* Historical ventas */}
+            {ventas.length===0&&!showVentaForm&&<div className="empty">Sin ventas registradas todavía.</div>}
+            {ventas.map(v=>{
+              const st=ventaStats(v);
+              const isExp=expandVentaId===v.id;
+              const totalAnimales=v.partidas.reduce((s,p)=>s+(p.animales?.length||0),0);
+              const totalSinEid=v.partidas.reduce((s,p)=>s+(p.animales?.filter(a=>!a.eid&&!a.eidManual).length||0),0);
+              return(<div key={v.id} className="card" style={{marginBottom:"1.5rem"}}>
+                <div className="card-header">
+                  <div>
+                    <span className="card-title">{v.comprador||"Sin destino"}</span>
+                    <span style={{marginLeft:".8rem",fontSize:".8rem",color:"var(--muted)"}}>{v.fecha}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:".6rem",flexWrap:"wrap"}}>
+                    <span className="tag" style={{background:st.margen>=0?"rgba(143,184,58,.15)":"rgba(192,57,43,.15)",color:st.margen>=0?"var(--accent)":"var(--danger)",border:"1px solid "+(st.margen>=0?"var(--accent)":"var(--danger)")}}>
+                      {st.margen>=0?"▲":"▼"} ${fmt(Math.abs(st.margen))}
+                    </span>
+                    <span style={{fontSize:".8rem",color:"var(--muted)"}}>{st.hds} cab.</span>
+                    {totalAnimales>0&&<span style={{fontSize:".75rem",background:"rgba(58,143,184,.12)",color:"var(--info)",border:"1px solid var(--info)",borderRadius:4,padding:"2px 7px",fontFamily:"var(--font-h)",fontWeight:700}}>{totalAnimales} EIDs{totalSinEid>0?" · ⚠️ "+totalSinEid+" sin EID":""}</span>}
+                    {totalAnimales>0&&<button className="btn btn-ghost btn-sm" style={{fontSize:".72rem",padding:"3px 8px"}} onClick={()=>setExpandVentaId(isExp?null:v.id)}>{isExp?"▲ Ocultar":"▼ Ver animales"}</button>}
+                    <button className="btn btn-ghost btn-sm" style={{padding:"2px 8px",fontSize:".75rem",color:"var(--danger)"}} onClick={()=>{if(window.confirm("Eliminar esta venta?"))setVentas(pr=>pr.filter(x=>x.id!==v.id));}}>✕</button>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div style={{overflowX:"auto"}}>
+                    <table className="tbl">
+                      <thead><tr><th>Lote</th><th>Cab.</th><th>Peso venta</th><th>$/kg</th><th>Δ kg ciclo</th><th>GDP ciclo</th><th>Costo prop.</th><th>Ingreso</th><th>Margen</th><th>ROI</th></tr></thead>
+                      <tbody>
+                        {v.partidas.map((pt,i)=>{
+                          const l=lotes.find(x=>x.id===pt.loteId);
+                          const cp=pt.cabezasLote>0?(pt.cabezas/pt.cabezasLote)*pt.costoTotal:0;
+                          const ing=pt.cabezas*pt.pesoVenta*pt.precio;
+                          const mg=ing-cp;const roi=cp>0?(mg/cp)*100:0;
+                          const dk=pt.pesoVenta-(pt.pesoBuyer||0);
+                          const gdp=pt.diasEncierro>0?dk/pt.diasEncierro:0;
+                          return(<tr key={i}>
+                            <td className="fw7">{l?.nombre||"Lote #"+pt.loteId}{pt.animales&&<span style={{marginLeft:4,fontSize:".7rem",color:"var(--info)"}}>({pt.animales.length} EIDs)</span>}</td>
+                            <td>{pt.cabezas}</td><td>{pt.pesoVenta} kg</td><td>${pt.precio}</td>
+                            <td style={{color:dk>=0?"var(--accent)":"var(--danger)"}}>{dk>=0?"+":""}{fmt(dk,1)} kg</td>
+                            <td className={gdp>=0.9?"text-accent":gdp>=0.7?"text-accent2":"text-danger"}>{fmt(gdp,3)} kg/d</td>
+                            <td>${fmt(cp)}</td>
+                            <td className="text-accent fw7">${fmt(ing)}</td>
+                            <td className={mg>=0?"text-accent fw7":"text-danger fw7"}>{mg>=0?"+":""}{fmt(mg)}</td>
+                            <td className={roi>=0?"text-accent":"text-danger"}>{fmt(roi,1)}%</td>
+                          </tr>);
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{borderTop:"2px solid var(--border)"}}>
+                          <td colSpan={6} style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".75rem",textTransform:"uppercase",letterSpacing:".06em",color:"var(--muted)"}}>Total venta</td>
+                          <td style={{fontFamily:"var(--font-h)",fontWeight:700}}>${fmt(st.cost)}</td>
+                          <td style={{fontFamily:"var(--font-h)",fontWeight:700,color:"var(--accent)"}}>${fmt(st.ing)}</td>
+                          <td style={{fontFamily:"var(--font-h)",fontWeight:700,color:st.margen>=0?"var(--accent)":"var(--danger)"}}>{st.margen>=0?"+":""}{fmt(st.margen)}</td>
+                          <td style={{fontFamily:"var(--font-h)",fontWeight:700,color:st.roi>=0?"var(--accent)":"var(--danger)"}}>{fmt(st.roi,1)}%</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  {v.nota&&<div style={{fontSize:".82rem",color:"var(--muted)",marginTop:".8rem"}}>Nota: {v.nota}</div>}
+                  {isExp&&<div style={{marginTop:"1rem",borderTop:"1px solid var(--border)",paddingTop:"1rem"}}>
+                    <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".75rem",textTransform:"uppercase",letterSpacing:".07em",color:"var(--muted)",marginBottom:".7rem"}}>Detalle de animales por lote</div>
+                    {v.partidas.filter(pt=>pt.animales?.length).map((pt,pi)=>{
+                      const l=lotes.find(x=>x.id===pt.loteId);
+                      const sinEid=pt.animales.filter(a=>!a.eid&&!a.eidManual).length;
+                      return(<div key={pi} style={{marginBottom:"1rem"}}>
+                        <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>
+                          {l?.nombre||"Lote #"+pt.loteId}
+                          {sinEid>0&&<span style={{marginLeft:".6rem",fontSize:".72rem",color:"var(--accent2)"}}>⚠️ {sinEid} sin EID</span>}
+                        </div>
+                        <div style={{overflowX:"auto"}}>
+                          <table className="tbl" style={{fontSize:".78rem"}}>
+                            <thead><tr><th>#</th><th>EID</th><th>VID</th><th>Sexo</th><th>Kg entrada</th><th>Kg salida</th><th>Días enc.</th><th>GDM</th></tr></thead>
+                            <tbody>{pt.animales.map((a,ai)=>{
+                              const hasGdp=a.gdp!=null;const gdpOk=hasGdp&&a.gdp>=0.9;const gdpMed=hasGdp&&a.gdp>=0.7;
+                              return(<tr key={ai} style={{background:(!a.eid&&!a.eidManual)?"rgba(200,162,58,.06)":""}}>
+                                <td style={{color:"var(--muted)"}}>{ai+1}</td>
+                                <td style={{fontFamily:"monospace",fontSize:".74rem"}}>
+                                  {a.eid?<span style={{color:"var(--accent)"}}>{a.eid}</span>
+                                   :a.eidManual?<span style={{color:"var(--accent2)"}}>{a.eidManual}<span style={{fontSize:".65rem",opacity:.7}}> (m)</span></span>
+                                   :<span style={{color:"var(--danger)"}}>Sin EID</span>}
+                                </td>
+                                <td style={{color:"var(--muted)"}}>{a.vid||"—"}</td>
+                                <td>{a.sexo?<span style={{color:a.sexo==="M"?"var(--info)":"var(--accent2)",fontWeight:700}}>{a.sexo==="M"?"♂ M":"♀ H"}</span>:"—"}</td>
+                                <td style={{color:"var(--muted)"}}>{a.pesoEntrada!=null?a.pesoEntrada+" kg":"—"}</td>
+                                <td style={{fontWeight:600}}>{(a.pesoSalida||a.peso)!=null?(a.pesoSalida||a.peso)+" kg":"—"}</td>
+                                <td style={{color:"var(--muted)"}}>{a.diasEncierro!=null?a.diasEncierro+"d":"—"}</td>
+                                <td style={{fontWeight:700,color:hasGdp?(gdpOk?"var(--accent)":gdpMed?"var(--accent2)":"var(--danger)"):"var(--muted)"}}>
+                                  {hasGdp?fmt(a.gdp,3)+" kg/d":"—"}
+                                </td>
+                              </tr>);
+                            })}</tbody>
+                          </table>
+                        </div>
+                      </div>);
+                    })}
+                  </div>}
+                </div>
+              </div>);
+            })}
+          </>);
+        })()}
+
+
+        {/* TROPA — Stock individual */}
+        {tab==="tropa"&&(()=>{
+          /* ── Construir registro maestro de animales ── */
+          // Todos los animales de todos los lotes
+          const allAnimals=[];
+          lotes.forEach(l=>{
+            (l.animales||[]).forEach(a=>{
+              allAnimals.push({
+                ...a,
+                loteId:l.id,
+                loteNombre:l.nombre,
+                tropa:l.tropa||"",
+                pesoActualLote:l.pesoActual||l.pesoBuyer||0,
+                fechaEntradaLote:l.fechaEntrada||"",
+                estadoLote:l.estado||"activo",
+              });
+            });
+          });
+
+          // Marcar animales vendidos cruzando con ventas
+          const ventaByEid={};
+          ventas.forEach(v=>{
+            v.partidas.forEach(p=>{
+              (p.animales||[]).forEach(a=>{
+                const key=(a.eid||a.eidManual||'').trim();
+                if(key)ventaByEid[key]={fecha:v.fecha,comprador:v.comprador||"Sin destino",pesoSalida:a.pesoSalida||a.peso||0,gdp:a.gdp||null,diasEncierro:a.diasEncierro||null};
+              });
+            });
+          });
+
+          const rows=allAnimals.map(a=>{
+            const key=(a.eid||a.eidManual||'').trim();
+            const venta=key?ventaByEid[key]:null;
+            const dias=a.fechaEntrada?(Math.round((new Date(venta?venta.fecha:new Date().toISOString().slice(0,10))-new Date(a.fechaEntrada))/(86400000))||0):null;
+            return{...a,vendido:!!venta,ventaInfo:venta,diasEncierro:dias};
+          });
+
+          // Filtros (estados en el componente padre)
+          const filtered=rows.filter(r=>{
+            if(tropaFilter==="stock"&&r.vendido)return false;
+            if(tropaFilter==="vendido"&&!r.vendido)return false;
+            if(tropaLote!=="todos"&&r.loteId!==+tropaLote)return false;
+            if(tropaSex!=="todos"&&r.sexo!==tropaSex)return false;
+            if(tropaSearch){const s=tropaSearch.toLowerCase();if(!(r.eid||"").toLowerCase().includes(s)&&!(r.eidManual||"").toLowerCase().includes(s)&&!(r.vid||"").toLowerCase().includes(s))return false;}
+            return true;
+          });
+
+          const totalStock=rows.filter(r=>!r.vendido).length;
+          const totalVendido=rows.filter(r=>r.vendido).length;
+
+          return(<>
+            <div className="section-title">Registro de <span>Tropa</span></div>
+
+            {/* Stats rápidas */}
+            <div style={{display:"flex",gap:"1rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
+              <div className="card" style={{flex:"1 1 140px",minWidth:130}}>
+                <div className="card-body" style={{padding:".8rem 1rem"}}>
+                  <div style={{fontSize:".72rem",color:"var(--muted)",textTransform:"uppercase",letterSpacing:".06em",fontFamily:"var(--font-h)"}}>En stock</div>
+                  <div style={{fontSize:"1.7rem",fontFamily:"var(--font-h)",fontWeight:800,color:"var(--accent)",lineHeight:1.1}}>{totalStock}</div>
+                  <div style={{fontSize:".72rem",color:"var(--muted)"}}>animales</div>
+                </div>
+              </div>
+              <div className="card" style={{flex:"1 1 140px",minWidth:130}}>
+                <div className="card-body" style={{padding:".8rem 1rem"}}>
+                  <div style={{fontSize:".72rem",color:"var(--muted)",textTransform:"uppercase",letterSpacing:".06em",fontFamily:"var(--font-h)"}}>Vendidos</div>
+                  <div style={{fontSize:"1.7rem",fontFamily:"var(--font-h)",fontWeight:800,color:"var(--danger)",lineHeight:1.1}}>{totalVendido}</div>
+                  <div style={{fontSize:".72rem",color:"var(--muted)"}}>con historial</div>
+                </div>
+              </div>
+              <div className="card" style={{flex:"1 1 140px",minWidth:130}}>
+                <div className="card-body" style={{padding:".8rem 1rem"}}>
+                  <div style={{fontSize:".72rem",color:"var(--muted)",textTransform:"uppercase",letterSpacing:".06em",fontFamily:"var(--font-h)"}}>Total registrados</div>
+                  <div style={{fontSize:"1.7rem",fontFamily:"var(--font-h)",fontWeight:800,lineHeight:1.1}}>{rows.length}</div>
+                  <div style={{fontSize:".72rem",color:"var(--muted)"}}>{lotes.length} lotes</div>
+                </div>
+              </div>
+              <div className="card" style={{flex:"1 1 140px",minWidth:130}}>
+                <div className="card-body" style={{padding:".8rem 1rem"}}>
+                  <div style={{fontSize:".72rem",color:"var(--muted)",textTransform:"uppercase",letterSpacing:".06em",fontFamily:"var(--font-h)"}}>Sin EID</div>
+                  <div style={{fontSize:"1.7rem",fontFamily:"var(--font-h)",fontWeight:800,color:"var(--accent2)",lineHeight:1.1}}>{rows.filter(r=>!r.eid&&!r.eidManual).length}</div>
+                  <div style={{fontSize:".72rem",color:"var(--muted)"}}>animales</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filtros */}
+            <div className="card" style={{marginBottom:"1.2rem"}}>
+              <div className="card-body" style={{padding:".8rem 1rem",display:"flex",gap:".8rem",flexWrap:"wrap",alignItems:"center"}}>
+                <div className="field" style={{margin:0,flex:"1 1 160px"}}>
+                  <label style={{fontSize:".72rem"}}>Buscar EID / VID</label>
+                  <input type="text" placeholder="EID o VID..." value={tropaSearch} onChange={e=>setTropaSearch(e.target.value)} style={{padding:"5px 8px",fontSize:".82rem"}}/>
+                </div>
+                <div className="field" style={{margin:0,flex:"1 1 130px"}}>
+                  <label style={{fontSize:".72rem"}}>Estado</label>
+                  <select value={tropaFilter} onChange={e=>setTropaFilter(e.target.value)} style={{padding:"5px 8px",fontSize:".82rem"}}>
+                    <option value="todos">Todos</option>
+                    <option value="stock">En stock</option>
+                    <option value="vendido">Vendidos</option>
+                  </select>
+                </div>
+                <div className="field" style={{margin:0,flex:"1 1 130px"}}>
+                  <label style={{fontSize:".72rem"}}>Lote</label>
+                  <select value={tropaLote} onChange={e=>setTropaLote(e.target.value)} style={{padding:"5px 8px",fontSize:".82rem"}}>
+                    <option value="todos">Todos los lotes</option>
+                    {lotes.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="field" style={{margin:0,flex:"1 1 100px"}}>
+                  <label style={{fontSize:".72rem"}}>Sexo</label>
+                  <select value={tropaSex} onChange={e=>setTropaSex(e.target.value)} style={{padding:"5px 8px",fontSize:".82rem"}}>
+                    <option value="todos">Todos</option>
+                    <option value="M">♂ Machos</option>
+                    <option value="H">♀ Hembras</option>
+                  </select>
+                </div>
+                <div style={{fontSize:".78rem",color:"var(--muted)",alignSelf:"flex-end",paddingBottom:"4px",whiteSpace:"nowrap"}}>{filtered.length} animal{filtered.length!==1?"es":""}</div>
+              </div>
+            </div>
+
+            {/* Tabla maestra */}
+            {rows.length===0?(
+              <div className="card"><div className="card-body" style={{textAlign:"center",padding:"2.5rem 1rem",color:"var(--muted)"}}>
+                <div style={{fontSize:"2rem",marginBottom:".8rem"}}>📋</div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>Sin animales registrados</div>
+                <div style={{fontSize:".84rem"}}>Importá una pesada Tru-Test en el tab <strong>Tru-Test</strong> para comenzar a cargar la tropa con EIDs individuales.</div>
+              </div></div>
+            ):(
+              <div className="card">
+                <div style={{overflowX:"auto"}}>
+                  <table className="tbl" style={{fontSize:".8rem"}}>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>EID</th>
+                        <th>VID</th>
+                        <th>Sexo</th>
+                        <th>Lote / Procedencia</th>
+                        <th>Kg entrada</th>
+                        <th>Kg actual</th>
+                        <th>F. entrada</th>
+                        <th>Días enc.</th>
+                        <th>Estado</th>
+                        <th>Venta / Destino</th>
+                        <th>Kg salida</th>
+                        <th>GDM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((r,i)=>{
+                        const eidKey=r.eid||r.eidManual||null;
+                        const gdpOk=r.ventaInfo?.gdp!=null&&r.ventaInfo.gdp>=0.9;
+                        const gdpMed=r.ventaInfo?.gdp!=null&&r.ventaInfo.gdp>=0.7;
+                        return(
+                          <tr key={i} style={{opacity:r.vendido?.85:1,background:r.vendido?"rgba(192,57,43,.04)":""}}>
+                            <td style={{color:"var(--muted)",fontSize:".72rem"}}>{i+1}</td>
+                            <td style={{fontFamily:"monospace",fontSize:".75rem"}}>
+                              {r.eid?<span style={{color:"var(--accent)",fontWeight:600}}>{r.eid}</span>
+                               :r.eidManual?<span style={{color:"var(--accent2)"}}>{r.eidManual}<span style={{fontSize:".65rem",opacity:.7}}> m</span></span>
+                               :<span style={{color:"var(--danger)",fontSize:".72rem"}}>—</span>}
+                            </td>
+                            <td style={{color:"var(--muted)",fontSize:".77rem"}}>{r.vid||"—"}</td>
+                            <td>{r.sexo?<span style={{color:r.sexo==="M"?"var(--info)":"var(--accent2)",fontWeight:700,fontSize:".77rem"}}>{r.sexo==="M"?"♂":"♀"} {r.sexo}</span>:"—"}</td>
+                            <td>
+                              <div style={{fontWeight:600,fontSize:".78rem"}}>{r.loteNombre}</div>
+                              {r.tropa&&<div style={{fontSize:".7rem",color:"var(--muted)"}}>{r.tropa}</div>}
+                            </td>
+                            <td style={{fontWeight:600}}>{r.pesoEntrada!=null?r.pesoEntrada+" kg":"—"}</td>
+                            <td style={{color:"var(--muted)"}}>{r.vendido?<span style={{color:"var(--danger)",fontSize:".72rem"}}>vendido</span>:(r.pesoActualLote?r.pesoActualLote+" kg":"—")}</td>
+                            <td style={{color:"var(--muted)",fontSize:".75rem"}}>{r.fechaEntrada||r.fechaEntradaLote||"—"}</td>
+                            <td style={{color:"var(--muted)",fontSize:".77rem"}}>{r.diasEncierro!=null?r.diasEncierro+"d":"—"}</td>
+                            <td>
+                              {r.vendido
+                                ?<span style={{background:"rgba(192,57,43,.12)",color:"var(--danger)",border:"1px solid var(--danger)",borderRadius:4,padding:"2px 7px",fontSize:".7rem",fontFamily:"var(--font-h)",fontWeight:700}}>VENDIDO</span>
+                                :<span style={{background:"rgba(143,184,58,.12)",color:"var(--accent)",border:"1px solid var(--accent)",borderRadius:4,padding:"2px 7px",fontSize:".7rem",fontFamily:"var(--font-h)",fontWeight:700}}>EN STOCK</span>}
+                            </td>
+                            <td style={{fontSize:".75rem"}}>
+                              {r.ventaInfo?<div><div style={{fontWeight:600}}>{r.ventaInfo.comprador}</div><div style={{color:"var(--muted)",fontSize:".7rem"}}>{r.ventaInfo.fecha}</div></div>:"—"}
+                            </td>
+                            <td style={{fontWeight:600,color:r.vendido?"var(--danger)":"var(--muted)"}}>
+                              {r.ventaInfo?.pesoSalida?r.ventaInfo.pesoSalida+" kg":"—"}
+                            </td>
+                            <td style={{fontWeight:700,color:r.ventaInfo?.gdp!=null?(gdpOk?"var(--accent)":gdpMed?"var(--accent2)":"var(--danger)"):"var(--muted)"}}>
+                              {r.ventaInfo?.gdp!=null?fmt(r.ventaInfo.gdp,3)+" kg/d":"—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>);
+        })()}
+
+        {/* CONFIG & EXPORT */}
+        {tab==="config"&&<>
+          <div className="section-title">Config & <span>Export</span></div>
+          <div className="grid-2">
+            <div className="card"><div className="card-header"><span className="card-title">Precio de mercado</span></div><div className="card-body">
+              <div className="field" style={{marginBottom:"1rem"}}><label>Precio ($/kg en pie)</label><input type="number" value={precioMercado} onChange={e=>setPrecioMercado(+e.target.value)}/></div>
+              <p style={{fontSize:".82rem",color:"var(--muted)",lineHeight:1.6,marginBottom:"1rem"}}>Afecta el ingreso proyectado de todos los lotes activos en tiempo real. Los datos se guardan automaticamente en el navegador.</p>
+              <div className="sep"/>
+              <div style={{fontSize:".82rem",color:"var(--muted)"}}><div className="fw7" style={{color:"var(--text)",marginBottom:".5rem"}}>Formulas utilizadas</div>
+                {["Ingreso/cab = precio x peso actual","Costo alim = $/kg ganado x (pesoActual - pesoBuyer)","Margen = ingreso - costo total","ROI = (margen / costo) x 100","GDP = kg ganados / dias entre pesadas","Dias rest. = (objetivo - actual) / GDP"].map(t=><div key={t} style={{padding:".25rem 0",borderBottom:"1px solid var(--border)"}}>{t}</div>)}
+              </div>
+            </div></div>
+            <div className="card"><div className="card-header"><span className="card-title">Exportar reportes CSV</span></div><div className="card-body" style={{display:"flex",flexDirection:"column",gap:"1.2rem"}}>
+              <div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>Reporte global de flota</div>
+                <div style={{fontSize:".82rem",color:"var(--muted)",marginBottom:".8rem"}}>Todos los lotes con costos, margenes y ROI.</div>
+                <button className="btn btn-primary btn-sm" onClick={exportCSV}>Descargar CSV flota</button>
+              </div>
+              <div className="sep"/>
+              <div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>Reporte completo por lote</div>
+                <div style={{fontSize:".82rem",color:"var(--muted)",marginBottom:".8rem"}}>Financiero + pesadas + dietas.</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:".5rem"}}>{lotes.map(l=><button key={l.id} className="btn btn-ghost btn-sm" onClick={()=>exportLote(l)}>Lote {l.nombre}</button>)}</div>
+              </div>
+              <div className="sep"/>
+              <div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>💾 Backup completo</div>
+                <div style={{fontSize:".82rem",color:"var(--muted)",marginBottom:".8rem"}}>Exporta todos los datos (lotes, pesadas, ventas, tropa) a un archivo JSON. Usalo para transferir datos a otro dispositivo o navegador.</div>
+                <button className="btn btn-primary btn-sm" onClick={exportBackup}>⬇ Descargar backup JSON</button>
+              </div>
+              <div className="sep"/>
+              <div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>📂 Restaurar backup</div>
+                <div style={{fontSize:".82rem",color:"var(--muted)",marginBottom:".8rem"}}>Importa un backup JSON generado por esta app. Reemplaza todos los datos actuales.</div>
+                <label className="btn btn-ghost btn-sm" style={{cursor:"pointer",display:"inline-block"}}>
+                  ⬆ Seleccionar backup JSON
+                  <input type="file" accept=".json" style={{display:"none"}} onChange={e=>importBackup(e.target.files[0])}/>
+                </label>
+              </div>
+              <div className="sep"/>
+              <div>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,marginBottom:".4rem"}}>Resetear datos</div>
+                <div style={{fontSize:".82rem",color:"var(--muted)",marginBottom:".8rem"}}>Borra todo y vuelve a los datos de ejemplo.</div>
+                <button className="btn btn-danger btn-sm" onClick={()=>{if(window.confirm("Borrar todos los datos?")){{localStorage.clear();window.location.reload();}}}}>Resetear</button>
+              </div>
+            </div></div>
+          </div>
+
+          <div className="section-title mt2">Roadmap: <span>Backend</span></div>
+          <div className="card"><div className="card-header"><span className="card-title">Arquitectura recomendada para produccion</span><span className="tag tag-info">Supabase + React</span></div>
+            <div className="card-body">
+              <p style={{fontSize:".85rem",color:"var(--muted)",marginBottom:"1.2rem",lineHeight:1.6}}>
+                Actualmente la app guarda datos en localStorage. Esta arquitectura los lleva a la nube.
+              </p>
+              <div className="arch-grid">
+                <div className="arch-card"><h4>Base de datos</h4><p>Supabase (PostgreSQL) - gratuito hasta 500 MB. Tablas: lotes, pesadas, dietas. Row-Level Security para multi-usuario.</p></div>
+                <div className="arch-card"><h4>Autenticacion</h4><p>Supabase Auth - login con email/contrasena o Google. Cada usuario ve solo sus propios lotes.</p></div>
+                <div className="arch-card"><h4>Tiempo real</h4><p>Supabase Realtime - multiples usuarios ven cambios al instante.</p></div>
+                <div className="arch-card"><h4>Frontend</h4><p>React (Vite) - migracion del HTML actual. Solo se reemplaza localStorage por Supabase.</p></div>
+              </div>
+              <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:5,padding:"1rem"}}>
+                <div style={{fontFamily:"var(--font-h)",fontWeight:700,fontSize:".85rem",textTransform:"uppercase",letterSpacing:".07em",marginBottom:".6rem",color:"var(--accent)"}}>Plan de migracion (~9 hs)</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:".8rem"}}>
+                  {[["Fase 1","Crear proyecto Supabase, definir tablas y RLS. ~2 hs"],["Fase 2","Instalar supabase-js, reemplazar localStorage. ~4 hs"],["Fase 3","Agregar login/registro, proteger rutas. ~2 hs"],["Fase 4","Deploy en Vercel o Netlify (hs"]].map(([f,d])=>(
+                    <div key={f} style={{display:"flex",gap:".6rem",alignItems:"flex-start"}}>
+                      <div style={{background:"var(--accent)",color:"var(--bg)",borderRadius:3,padding:"2px 8px",fontFamily:"var(--font-h)",fontWeight:700,fontSize:".75rem",flexShrink:0,marginTop:2}}>{f}</div>
+                      <div style={{fontSize:".8rem",color:"var(--muted)",lineHeight:1.5}}>{d}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>}
+
+      </div>
+
+      <div className="bottom-nav">
+        {navItems.map(([k,icon,label])=>(
+          <button key={k} className={"bnav-btn"+(tab===k?" active":"")}
+            style={k==="alertas"&&hasCrit?{color:"#e74c3c"}:{}}
+            onClick={()=>setTab(k)}>
+            <span className="bnav-icon">{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+    </div>
+  );
+}
+
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+  <script>
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").then(r => console.log("SW:", r.scope)).catch(e => console.warn("SW error:", e));
+      });
+    }
+  </script>
+</body>
+</html>
